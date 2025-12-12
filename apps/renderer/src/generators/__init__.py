@@ -1,0 +1,1 @@
+# JaSlide Renderer - generators package

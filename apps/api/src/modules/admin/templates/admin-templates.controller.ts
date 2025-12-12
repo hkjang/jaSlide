@@ -1,0 +1,70 @@
+import { Controller, Get, Post, Patch, Delete, Body, Param, Query, UseGuards } from '@nestjs/common';
+import { AdminTemplatesService } from './admin-templates.service';
+import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
+import { RolesGuard } from '../../auth/guards/roles.guard';
+import { Roles } from '../../auth/decorators/roles.decorator';
+import { PaginationDto } from '../dto';
+
+@Controller('admin/templates')
+@UseGuards(JwtAuthGuard, RolesGuard)
+@Roles('ADMIN')
+export class AdminTemplatesController {
+    constructor(private templatesService: AdminTemplatesService) { }
+
+    @Get()
+    async findAll(@Query() filter: PaginationDto & { category?: string; isPublic?: boolean }) {
+        return this.templatesService.findAll(filter);
+    }
+
+    @Get(':id')
+    async findById(@Param('id') id: string) {
+        return this.templatesService.findById(id);
+    }
+
+    @Post()
+    async create(@Body() data: any) {
+        return this.templatesService.create(data);
+    }
+
+    @Patch(':id')
+    async update(@Param('id') id: string, @Body() data: any) {
+        return this.templatesService.update(id, data);
+    }
+
+    @Delete(':id')
+    async delete(@Param('id') id: string) {
+        return this.templatesService.delete(id);
+    }
+
+    // Color Palettes
+    @Get('palettes/list')
+    async findColorPalettes(@Query() filter: PaginationDto) {
+        return this.templatesService.findColorPalettes(filter);
+    }
+
+    @Post('palettes')
+    async createColorPalette(@Body() data: any) {
+        return this.templatesService.createColorPalette(data);
+    }
+
+    @Delete('palettes/:id')
+    async deleteColorPalette(@Param('id') id: string) {
+        return this.templatesService.deleteColorPalette(id);
+    }
+
+    // Layout Rules
+    @Get('layouts/list')
+    async findLayoutRules(@Query() filter: PaginationDto) {
+        return this.templatesService.findLayoutRules(filter);
+    }
+
+    @Post('layouts')
+    async createLayoutRule(@Body() data: any) {
+        return this.templatesService.createLayoutRule(data);
+    }
+
+    @Delete('layouts/:id')
+    async deleteLayoutRule(@Param('id') id: string) {
+        return this.templatesService.deleteLayoutRule(id);
+    }
+}

@@ -1,0 +1,23 @@
+[project]
+name = "jaslide-renderer"
+version = "0.1.0"
+description = "PPTX/PDF rendering service for JaSlide"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "fastapi>=0.104.0",
+    "uvicorn>=0.24.0",
+    "python-pptx>=0.6.21",
+    "pillow>=10.0.0",
+    "pydantic>=2.5.0",
+    "python-multipart>=0.0.6",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.4.0",
+    "httpx>=0.25.0",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

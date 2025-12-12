@@ -1,0 +1,549 @@
+// Prisma Schema for JaSlide
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================
+// User & Organization
+// ============================================
+
+model User {
+  id                 String               @id @default(cuid())
+  email              String               @unique
+  name               String?
+  image              String?
+  password           String?
+  creditsRemaining   Int                  @default(100)
+  role               UserRole             @default(USER)
+  status             UserStatus           @default(ACTIVE)
+  preferences        Json                 @default("{}")
+  organization       Organization?        @relation(fields: [organizationId], references: [id])
+  organizationId     String?
+  presentations      Presentation[]
+  creditTransactions CreditTransaction[]
+  generationJobs     GenerationJob[]
+  assets             Asset[]
+  auditLogs          AuditLog[]
+  accounts           Account[]
+  sessions           Session[]
+  userRoles          UserRoleAssignment[]
+  lastLoginAt        DateTime?
+  createdAt          DateTime             @default(now())
+  updatedAt          DateTime             @updatedAt
+
+  @@index([email])
+  @@index([organizationId])
+  @@index([status])
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+  PENDING
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+enum UserRole {
+  USER
+  ADMIN
+  ORG_ADMIN
+}
+
+model Organization {
+  id            String             @id @default(cuid())
+  name          String
+  slug          String             @unique
+  domain        String?
+  logo          String?
+  brandSettings Json               @default("{}")
+  plan          OrganizationPlan   @default(FREE)
+  users         User[]
+  templates     Template[]
+  assets        Asset[]
+  colorPalettes ColorPalette[]
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+
+  @@index([slug])
+  @@index([domain])
+}
+
+enum OrganizationPlan {
+  FREE
+  STARTER
+  PROFESSIONAL
+  ENTERPRISE
+}
+
+// ============================================
+// Presentation & Slides
+// ============================================
+
+model Presentation {
+  id            String             @id @default(cuid())
+  title         String
+  description   String?
+  user          User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId        String
+  template      Template?          @relation(fields: [templateId], references: [id])
+  templateId    String?
+  slides        Slide[]
+  status        PresentationStatus @default(DRAFT)
+  sourceType    SourceType
+  sourceContent String?            @db.Text
+  metadata      Json?
+  isPublic      Boolean            @default(false)
+  shareToken    String?            @unique
+  generationJob GenerationJob?
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+
+  @@index([userId])
+  @@index([templateId])
+  @@index([status])
+  @@index([shareToken])
+}
+
+enum PresentationStatus {
+  DRAFT
+  GENERATING
+  COMPLETED
+  FAILED
+}
+
+enum SourceType {
+  TEXT
+  DOCX
+  PDF
+  MARKDOWN
+  CSV
+  URL
+}
+
+model Slide {
+  id             String       @id @default(cuid())
+  presentation   Presentation @relation(fields: [presentationId], references: [id], onDelete: Cascade)
+  presentationId String
+  order          Int
+  type           SlideType
+  title          String?
+  content        Json
+  layout         String       @default("center")
+  notes          String?      @db.Text
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  @@index([presentationId])
+  @@index([order])
+}
+
+enum SlideType {
+  TITLE
+  CONTENT
+  TWO_COLUMN
+  IMAGE
+  CHART
+  QUOTE
+  BULLET_LIST
+  COMPARISON
+  TIMELINE
+  SECTION_HEADER
+  BLANK
+}
+
+// ============================================
+// Templates
+// ============================================
+
+model Template {
+  id             String           @id @default(cuid())
+  name           String
+  description    String?
+  thumbnail      String?
+  category       TemplateCategory @default(BUSINESS)
+  config         Json
+  isPublic       Boolean          @default(false)
+  organization   Organization?    @relation(fields: [organizationId], references: [id])
+  organizationId String?
+  presentations  Presentation[]
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+
+  @@index([category])
+  @@index([isPublic])
+  @@index([organizationId])
+}
+
+enum TemplateCategory {
+  BUSINESS
+  EDUCATION
+  CREATIVE
+  MINIMAL
+  TECH
+  MARKETING
+  CUSTOM
+}
+
+// ============================================
+// Assets
+// ============================================
+
+model Asset {
+  id             String       @id @default(cuid())
+  type           AssetType
+  name           String
+  url            String
+  thumbnailUrl   String?
+  size           Int
+  mimeType       String
+  licenseInfo    Json?
+  user           User?        @relation(fields: [userId], references: [id])
+  userId         String?
+  organization   Organization? @relation(fields: [organizationId], references: [id])
+  organizationId String?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  @@index([userId])
+  @@index([organizationId])
+  @@index([type])
+}
+
+enum AssetType {
+  IMAGE
+  ICON
+  LOGO
+  BACKGROUND
+  FONT
+}
+
+// ============================================
+// Generation & Credits
+// ============================================
+
+model GenerationJob {
+  id             String           @id @default(cuid())
+  user           User             @relation(fields: [userId], references: [id])
+  userId         String
+  presentation   Presentation?    @relation(fields: [presentationId], references: [id])
+  presentationId String?          @unique
+  status         GenerationStatus @default(QUEUED)
+  input          Json
+  output         Json?
+  progress       Int              @default(0)
+  error          Json?
+  creditsCost    Int              @default(0)
+  startedAt      DateTime?
+  completedAt    DateTime?
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+
+  @@index([userId])
+  @@index([status])
+}
+
+enum GenerationStatus {
+  QUEUED
+  PROCESSING
+  GENERATING_OUTLINE
+  GENERATING_CONTENT
+  APPLYING_DESIGN
+  RENDERING
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+model CreditTransaction {
+  id            String                @id @default(cuid())
+  user          User                  @relation(fields: [userId], references: [id])
+  userId        String
+  amount        Int
+  type          CreditTransactionType
+  description   String
+  referenceId   String?
+  referenceType String?
+  balance       Int
+  createdAt     DateTime              @default(now())
+
+  @@index([userId])
+  @@index([type])
+  @@index([createdAt])
+}
+
+enum CreditTransactionType {
+  PURCHASE
+  USAGE
+  REFUND
+  BONUS
+  SUBSCRIPTION
+  ADJUSTMENT
+}
+
+// ============================================
+// Audit & Logging
+// ============================================
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  user      User?    @relation(fields: [userId], references: [id])
+  userId    String?
+  action    String
+  resource  String
+  resourceId String?
+  details   Json?
+  ipAddress String?
+  userAgent String?
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([action])
+  @@index([resource])
+  @@index([createdAt])
+}
+
+// ============================================
+// Role-Based Access Control
+// ============================================
+
+model Role {
+  id          String               @id @default(cuid())
+  name        String               @unique
+  description String?
+  permissions Json                 @default("[]")
+  isSystem    Boolean              @default(false)
+  users       UserRoleAssignment[]
+  createdAt   DateTime             @default(now())
+  updatedAt   DateTime             @updatedAt
+}
+
+model UserRoleAssignment {
+  id        String   @id @default(cuid())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String
+  role      Role     @relation(fields: [roleId], references: [id])
+  roleId    String
+  createdAt DateTime @default(now())
+
+  @@unique([userId, roleId])
+  @@index([userId])
+  @@index([roleId])
+}
+
+// ============================================
+// Credit & Pricing Management
+// ============================================
+
+model CreditPolicy {
+  id          String   @id @default(cuid())
+  name        String
+  modelType   String   // 'llm', 'image', 'generation'
+  modelName   String?  // specific model name
+  costPerUnit Int      // credits per operation
+  description String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([modelType])
+  @@index([isActive])
+}
+
+model PricingPlan {
+  id             String   @id @default(cuid())
+  name           String   @unique
+  displayName    String
+  monthlyCredits Int
+  price          Decimal  @db.Decimal(10, 2)
+  features       Json     @default("[]")
+  isActive       Boolean  @default(true)
+  sortOrder      Int      @default(0)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([isActive])
+}
+
+// ============================================
+// LLM Model Registry
+// ============================================
+
+model LlmModel {
+  id            String   @id @default(cuid())
+  name          String   @unique
+  provider      String   // 'openai', 'anthropic', 'azure', 'google'
+  modelId       String   // actual API model id
+  endpoint      String?
+  apiKeyEnvVar  String   // env variable name for API key
+  maxTokens     Int      @default(4096)
+  rateLimit     Int?     // requests per minute
+  costPerToken  Decimal  @db.Decimal(10, 8)
+  isActive      Boolean  @default(true)
+  isDefault     Boolean  @default(false)
+  config        Json     @default("{}")
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([provider])
+  @@index([isActive])
+}
+
+// ============================================
+// Prompt Template Management
+// ============================================
+
+model PromptRegistry {
+  id          String                  @id @default(cuid())
+  name        String                  @unique
+  category    String                  // 'outline', 'content', 'design', 'edit'
+  description String?
+  versions    PromptTemplateVersion[]
+  createdAt   DateTime                @default(now())
+  updatedAt   DateTime                @updatedAt
+
+  @@index([category])
+}
+
+model PromptTemplateVersion {
+  id         String         @id @default(cuid())
+  template   PromptRegistry @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  templateId String
+  version    Int
+  content    String         @db.Text
+  variables  Json           @default("[]")
+  isActive   Boolean        @default(true)
+  createdBy  String?
+  createdAt  DateTime       @default(now())
+
+  @@unique([templateId, version])
+  @@index([templateId])
+  @@index([isActive])
+}
+
+// ============================================
+// Design & Branding
+// ============================================
+
+model ColorPalette {
+  id             String        @id @default(cuid())
+  name           String
+  colors         Json          // array of hex colors
+  isPublic       Boolean       @default(false)
+  organization   Organization? @relation(fields: [organizationId], references: [id])
+  organizationId String?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  @@index([isPublic])
+  @@index([organizationId])
+}
+
+model LayoutRule {
+  id          String   @id @default(cuid())
+  name        String
+  slideType   String
+  config      Json     // layout configuration
+  isDefault   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([slideType])
+  @@index([isDefault])
+}
+
+// ============================================
+// System Policies & Configuration
+// ============================================
+
+model SystemPolicy {
+  id          String   @id @default(cuid())
+  category    String   // 'security', 'retention', 'limits', 'notification'
+  key         String   @unique
+  value       Json
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([category])
+}
+
+model AlertConfig {
+  id          String   @id @default(cuid())
+  name        String
+  eventType   String   // 'error', 'billing', 'security', 'system'
+  channel     String   // 'email', 'webhook', 'sms', 'slack'
+  config      Json     // channel-specific settings
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([eventType])
+  @@index([isActive])
+}
+
+// ============================================
+// API Logging
+// ============================================
+
+model ApiLog {
+  id           String   @id @default(cuid())
+  userId       String?
+  method       String
+  path         String
+  statusCode   Int
+  responseTime Int      // milliseconds
+  requestBody  Json?
+  responseBody Json?
+  ipAddress    String?
+  userAgent    String?
+  createdAt    DateTime @default(now())
+
+  @@index([userId])
+  @@index([path])
+  @@index([statusCode])
+  @@index([createdAt])
+}
+
