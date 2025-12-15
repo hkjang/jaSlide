@@ -55,7 +55,7 @@ export class AdminJobsService {
 
         await this.prisma.generationJob.update({
             where: { id },
-            data: { status: 'QUEUED', error: null, startedAt: null, completedAt: null },
+            data: { status: 'QUEUED', error: undefined, startedAt: null, completedAt: null },
         });
 
         return { success: true, message: 'Job queued for retry' };

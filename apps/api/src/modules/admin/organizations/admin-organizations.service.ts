@@ -111,7 +111,7 @@ export class AdminOrganizationsService {
                 action: 'UPDATE',
                 resource: 'ORGANIZATION',
                 resourceId: id,
-                details: dto,
+                details: { ...dto },
             },
         });
 

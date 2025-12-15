@@ -69,9 +69,14 @@ function DraggableSlide({ slide, index, isSelected, onSelect, onMove }: Draggabl
 
     const Icon = slideTypeIcons[slide.type] || Layout;
 
+    // Combine drag and drop refs properly
+    const setRefs = (node: HTMLDivElement | null) => {
+        drag(drop(node));
+    };
+
     return (
         <div
-            ref={(node) => drag(drop(node))}
+            ref={setRefs}
             onClick={onSelect}
             className={`slide-panel p-2 cursor-move ${isSelected ? 'active' : ''} ${isDragging ? 'opacity-50' : ''
                 }`}

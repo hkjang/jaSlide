@@ -1,10 +1,11 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { CreditsService } from './credits.service';
 import { PrismaService } from '../../prisma/prisma.service';
+import { BadRequestException } from '@nestjs/common';
 
 describe('CreditsService', () => {
     let service: CreditsService;
-    let prisma: jest.Mocked<PrismaService>;
+    let prisma: any;
 
     const mockUser = {
         id: 'user-123',
@@ -19,34 +20,36 @@ describe('CreditsService', () => {
         type: 'USAGE' as const,
         description: 'AI Generation',
         referenceId: 'job-123',
-        referenceType: 'generation',
+        referenceType: 'presentation',
         balance: 90,
         createdAt: new Date(),
     };
 
     beforeEach(async () => {
+        prisma = {
+            user: {
+                findUnique: jest.fn(),
+                update: jest.fn(),
+            },
+            creditTransaction: {
+                create: jest.fn(),
+                findMany: jest.fn(),
+                count: jest.fn(),
+            },
+            $transaction: jest.fn().mockImplementation((callback) => callback(prisma)),
+        };
+
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 CreditsService,
                 {
                     provide: PrismaService,
-                    useValue: {
-                        user: {
-                            findUnique: jest.fn(),
-                            update: jest.fn(),
-                        },
-                        creditTransaction: {
-                            create: jest.fn(),
-                            findMany: jest.fn(),
-                        },
-                        $transaction: jest.fn().mockImplementation((callback) => callback(prisma)),
-                    },
+                    useValue: prisma,
                 },
             ],
         }).compile();
 
         service = module.get<CreditsService>(CreditsService);
-        prisma = module.get(PrismaService);
     });
 
     it('should be defined', () => {
@@ -55,35 +58,34 @@ describe('CreditsService', () => {
 
     describe('getBalance', () => {
         it('should return user credit balance', async () => {
-            (prisma.user.findUnique as jest.Mock).mockResolvedValue(mockUser);
+            prisma.user.findUnique.mockResolvedValue(mockUser);
 
             const result = await service.getBalance('user-123');
 
-            expect(result).toBe(100);
+            expect(result.available).toBe(100);
+            expect(result.pending).toBe(0);
         });
 
-        it('should return 0 if user not found', async () => {
-            (prisma.user.findUnique as jest.Mock).mockResolvedValue(null);
+        it('should throw BadRequestException if user not found', async () => {
+            prisma.user.findUnique.mockResolvedValue(null);
 
-            const result = await service.getBalance('unknown-id');
-
-            expect(result).toBe(0);
+            await expect(service.getBalance('unknown-id')).rejects.toThrow(BadRequestException);
         });
     });
 
-    describe('hasEnoughCredits', () => {
+    describe('checkBalance', () => {
         it('should return true if user has enough credits', async () => {
-            (prisma.user.findUnique as jest.Mock).mockResolvedValue(mockUser);
+            prisma.user.findUnique.mockResolvedValue(mockUser);
 
-            const result = await service.hasEnoughCredits('user-123', 50);
+            const result = await service.checkBalance('user-123', 50);
 
             expect(result).toBe(true);
         });
 
         it('should return false if user does not have enough credits', async () => {
-            (prisma.user.findUnique as jest.Mock).mockResolvedValue(mockUser);
+            prisma.user.findUnique.mockResolvedValue(mockUser);
 
-            const result = await service.hasEnoughCredits('user-123', 150);
+            const result = await service.checkBalance('user-123', 150);
 
             expect(result).toBe(false);
         });
@@ -91,35 +93,37 @@ describe('CreditsService', () => {
 
     describe('deductCredits', () => {
         it('should deduct credits and create transaction', async () => {
-            (prisma.user.findUnique as jest.Mock).mockResolvedValue(mockUser);
-            (prisma.user.update as jest.Mock).mockResolvedValue({ ...mockUser, creditsRemaining: 90 });
-            (prisma.creditTransaction.create as jest.Mock).mockResolvedValue(mockTransaction);
+            prisma.user.findUnique.mockResolvedValue(mockUser);
+            prisma.user.update.mockResolvedValue({ ...mockUser, creditsRemaining: 90 });
+            prisma.creditTransaction.create.mockResolvedValue(mockTransaction);
 
             const result = await service.deductCredits(
                 'user-123',
                 10,
+                'USAGE',
                 'AI Generation',
                 'job-123',
-                'generation',
             );
 
             expect(result).toBeDefined();
-            expect(result.amount).toBe(-10);
+            expect(result.transaction.amount).toBe(-10);
+            expect(result.newBalance).toBe(90);
         });
 
         it('should throw if user does not have enough credits', async () => {
-            (prisma.user.findUnique as jest.Mock).mockResolvedValue(mockUser);
+            prisma.user.findUnique.mockResolvedValue(mockUser);
 
             await expect(
-                service.deductCredits('user-123', 150, 'Big task'),
-            ).rejects.toThrow();
+                service.deductCredits('user-123', 150, 'USAGE', 'Big task'),
+            ).rejects.toThrow(BadRequestException);
         });
     });
 
     describe('addCredits', () => {
         it('should add credits and create transaction', async () => {
-            (prisma.user.update as jest.Mock).mockResolvedValue({ ...mockUser, creditsRemaining: 150 });
-            (prisma.creditTransaction.create as jest.Mock).mockResolvedValue({
+            prisma.user.findUnique.mockResolvedValue(mockUser);
+            prisma.user.update.mockResolvedValue({ ...mockUser, creditsRemaining: 150 });
+            prisma.creditTransaction.create.mockResolvedValue({
                 ...mockTransaction,
                 amount: 50,
                 type: 'PURCHASE',
@@ -129,18 +133,21 @@ describe('CreditsService', () => {
             const result = await service.addCredits('user-123', 50, 'PURCHASE', 'Credit purchase');
 
             expect(result).toBeDefined();
-            expect(result.amount).toBe(50);
+            expect(result.transaction.amount).toBe(50);
+            expect(result.newBalance).toBe(150);
         });
     });
 
     describe('getTransactionHistory', () => {
         it('should return transaction history', async () => {
-            (prisma.creditTransaction.findMany as jest.Mock).mockResolvedValue([mockTransaction]);
+            prisma.creditTransaction.findMany.mockResolvedValue([mockTransaction]);
+            prisma.creditTransaction.count.mockResolvedValue(1);
 
             const result = await service.getTransactionHistory('user-123');
 
-            expect(result).toHaveLength(1);
-            expect(result[0].type).toBe('USAGE');
+            expect(result.data).toHaveLength(1);
+            expect(result.data[0].type).toBe('USAGE');
+            expect(result.total).toBe(1);
         });
     });
 });

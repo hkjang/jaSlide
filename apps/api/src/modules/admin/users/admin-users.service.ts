@@ -184,7 +184,7 @@ export class AdminUsersService {
                 action: 'UPDATE',
                 resource: 'USER',
                 resourceId: id,
-                details: dto,
+                details: { ...dto },
             },
         });
 
@@ -255,7 +255,7 @@ export class AdminUsersService {
                 action: 'CREDIT_ADJUSTMENT',
                 resource: 'USER',
                 resourceId: userId,
-                details: dto,
+                details: { ...dto },
             },
         });
 

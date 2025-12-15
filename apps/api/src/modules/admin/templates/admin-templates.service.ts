@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { PaginationDto } from '../dto';
+import { TemplateCategory } from '@prisma/client';
 
 @Injectable()
 export class AdminTemplatesService {
@@ -45,13 +46,28 @@ export class AdminTemplatesService {
     }
 
     async create(data: { name: string; description?: string; category: string; config: any; isPublic?: boolean; organizationId?: string }) {
-        return this.prisma.template.create({ data });
+        const createData: any = {
+            name: data.name,
+            description: data.description,
+            category: data.category as TemplateCategory,
+            config: data.config,
+            isPublic: data.isPublic,
+        };
+        if (data.organizationId) {
+            createData.organization = { connect: { id: data.organizationId } };
+        }
+        return this.prisma.template.create({ data: createData });
     }
 
     async update(id: string, data: { name?: string; description?: string; category?: string; config?: any; isPublic?: boolean }) {
         const existing = await this.prisma.template.findUnique({ where: { id } });
         if (!existing) throw new NotFoundException('Template not found');
-        return this.prisma.template.update({ where: { id }, data });
+
+        const updateData: any = { ...data };
+        if (data.category) {
+            updateData.category = data.category as TemplateCategory;
+        }
+        return this.prisma.template.update({ where: { id }, data: updateData });
     }
 
     async delete(id: string) {
