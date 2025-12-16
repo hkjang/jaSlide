@@ -242,6 +242,19 @@ export default function AdminModelsPage() {
                                     <option value="vllm">vLLM (OpenAI Compatible)</option>
                                 </select>
                             </div>
+                            {(formData.provider === 'vllm' || formData.provider === 'azure') && (
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                                        API URL <span className="text-red-500">*</span>
+                                    </label>
+                                    <input type="url" value={formData.endpoint} onChange={(e) => setFormData({ ...formData, endpoint: e.target.value })}
+                                        className="w-full px-3 py-2 border rounded-lg" required
+                                        placeholder={formData.provider === 'vllm' ? 'http://localhost:8000/v1' : 'https://your-resource.openai.azure.com/'} />
+                                    <p className="text-xs text-gray-500 mt-1">
+                                        {formData.provider === 'vllm' ? 'vLLM 서버의 OpenAI Compatible API 엔드포인트' : 'Azure OpenAI 리소스 URL'}
+                                    </p>
+                                </div>
+                            )}
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">Model ID</label>
                                 <input type="text" value={formData.modelId} onChange={(e) => setFormData({ ...formData, modelId: e.target.value })}
