@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { DndProvider, useDrag, useDrop } from 'react-dnd';
@@ -8,7 +8,7 @@ import { HTML5Backend } from 'react-dnd-html5-backend';
 import { Button } from '@/components/ui/button';
 import { useEditorStore } from '@/stores/editor-store';
 import { useAuthStore } from '@/stores/auth-store';
-import { presentationsApi, slidesApi } from '@/lib/api';
+import { presentationsApi, slidesApi, exportApi, generationApi } from '@/lib/api';
 import { toast } from '@/hooks/use-toast';
 import { UndoRedoButtons } from '@/components/editor/undo-redo-buttons';
 import { VersionHistory } from '@/components/editor/version-history';
@@ -31,6 +31,11 @@ import {
     Quote,
     History,
     MessageSquare,
+    X,
+    Link as LinkIcon,
+    FileText,
+    FileSpreadsheet,
+    Loader2,
 } from 'lucide-react';
 
 // Slide type icons mapping
@@ -102,7 +107,7 @@ export default function EditorPage() {
     const params = useParams();
     const router = useRouter();
     const presentationId = params.id as string;
-    const { isAuthenticated } = useAuthStore();
+    const { isAuthenticated, hasHydrated } = useAuthStore();
     const {
         presentation,
         selectedSlideId,
@@ -124,6 +129,14 @@ export default function EditorPage() {
     const [showSlideTypes, setShowSlideTypes] = useState(false);
     const [showVersionHistory, setShowVersionHistory] = useState(false);
     const [showCommentsPanel, setShowCommentsPanel] = useState(false);
+    const [showShareDialog, setShowShareDialog] = useState(false);
+    const [showExportMenu, setShowExportMenu] = useState(false);
+    const [showAiEditDialog, setShowAiEditDialog] = useState(false);
+    const [shareUrl, setShareUrl] = useState('');
+    const [aiEditInstruction, setAiEditInstruction] = useState('');
+    const [isExporting, setIsExporting] = useState(false);
+    const [isAiEditing, setIsAiEditing] = useState(false);
+    const [isDuplicating, setIsDuplicating] = useState(false);
 
     const selectedSlide = presentation?.slides.find((s) => s.id === selectedSlideId);
 
@@ -147,12 +160,15 @@ export default function EditorPage() {
     }, [canUndo, canRedo, undo, redo]);
 
     useEffect(() => {
+        // Wait for hydration before checking auth
+        if (!hasHydrated) return;
+
         if (!isAuthenticated) {
             router.push('/login');
             return;
         }
         fetchPresentation();
-    }, [presentationId, isAuthenticated]);
+    }, [presentationId, isAuthenticated, hasHydrated]);
 
     const fetchPresentation = async () => {
         try {
@@ -175,12 +191,18 @@ export default function EditorPage() {
         if (!presentation || !isDirty) return;
         setSaving(true);
         try {
-            // Save slide order changes
-            if (presentation.slides.length > 0) {
-                await slidesApi.reorder(presentationId, {
-                    slideIds: presentation.slides.map((s) => s.id),
-                });
-            }
+            // Save individual slide changes
+            const savePromises = presentation.slides.map((slide) =>
+                slidesApi.update(presentationId, slide.id, {
+                    type: slide.type,
+                    title: slide.title,
+                    content: slide.content,
+                    layout: slide.layout,
+                    notes: slide.notes,
+                    order: slide.order,
+                })
+            );
+            await Promise.all(savePromises);
             setDirty(false);
             toast({ title: '저장 완료', description: '변경사항이 저장되었습니다.' });
         } catch (error) {
@@ -188,6 +210,46 @@ export default function EditorPage() {
         } finally {
             setSaving(false);
         }
+    };
+
+    // Save individual slide changes
+    const handleSaveSlide = async (slide: any) => {
+        if (!slide || !presentationId) return;
+        try {
+            await slidesApi.update(presentationId, slide.id, {
+                type: slide.type,
+                title: slide.title,
+                content: slide.content,
+                layout: slide.layout,
+                notes: slide.notes,
+                order: slide.order,
+            });
+            setDirty(false);
+        } catch (error) {
+            console.error('Failed to save slide:', error);
+        }
+    };
+
+    // Debounced save for select/dropdown changes
+    const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+    const handleSaveSlideDelayed = (slideId: string, updates: Partial<any>) => {
+        if (saveTimeoutRef.current) {
+            clearTimeout(saveTimeoutRef.current);
+        }
+        saveTimeoutRef.current = setTimeout(async () => {
+            const slide = presentation?.slides.find((s) => s.id === slideId);
+            if (slide) {
+                try {
+                    await slidesApi.update(presentationId, slideId, {
+                        ...slide,
+                        ...updates,
+                    });
+                    setDirty(false);
+                } catch (error) {
+                    console.error('Failed to save slide:', error);
+                }
+            }
+        }, 500);
     };
 
     const handleDeleteSlide = async () => {
@@ -223,7 +285,105 @@ export default function EditorPage() {
         }
     };
 
-    if (loading) {
+    // Share handler
+    const handleShare = async () => {
+        try {
+            const response = await presentationsApi.share(presentationId);
+            const shareToken = response.data.shareToken;
+            const url = `${window.location.origin}/presentations/shared/${shareToken}`;
+            setShareUrl(url);
+            setShowShareDialog(true);
+        } catch (error) {
+            toast({ title: '공유 링크 생성 실패', variant: 'destructive' });
+        }
+    };
+
+    // Copy share URL to clipboard
+    const handleCopyShareUrl = async () => {
+        try {
+            await navigator.clipboard.writeText(shareUrl);
+            toast({ title: '링크 복사됨', description: '클립보드에 복사되었습니다.' });
+        } catch (error) {
+            toast({ title: '복사 실패', variant: 'destructive' });
+        }
+    };
+
+    // Export handler
+    const handleExport = async (format: 'pptx' | 'pdf') => {
+        try {
+            setIsExporting(true);
+            setShowExportMenu(false);
+
+            const response = format === 'pptx'
+                ? await exportApi.pptx(presentationId)
+                : await exportApi.pdf(presentationId);
+
+            // Create download link
+            const blob = new Blob([response.data], {
+                type: format === 'pptx'
+                    ? 'application/vnd.openxmlformats-officedocument.presentationml.presentation'
+                    : 'application/pdf'
+            });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `${presentation?.title || 'presentation'}.${format}`;
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+
+            toast({ title: '내보내기 완료', description: `${format.toUpperCase()} 파일이 다운로드되었습니다.` });
+        } catch (error) {
+            toast({ title: '내보내기 실패', variant: 'destructive' });
+        } finally {
+            setIsExporting(false);
+        }
+    };
+
+    // AI Edit handler
+    const handleAiEdit = async () => {
+        if (!selectedSlideId || !aiEditInstruction.trim()) {
+            toast({ title: '편집 지시를 입력해주세요.', variant: 'destructive' });
+            return;
+        }
+
+        try {
+            setIsAiEditing(true);
+            await generationApi.edit({
+                slideId: selectedSlideId,
+                instruction: aiEditInstruction,
+            });
+            toast({ title: 'AI 편집 완료', description: '슬라이드가 업데이트되었습니다.' });
+            setShowAiEditDialog(false);
+            setAiEditInstruction('');
+            // Refresh to see changes
+            fetchPresentation();
+        } catch (error) {
+            toast({ title: 'AI 편집 실패', variant: 'destructive' });
+        } finally {
+            setIsAiEditing(false);
+        }
+    };
+
+    // Duplicate slide handler
+    const handleDuplicateSlide = async () => {
+        if (!selectedSlideId || !presentationId) return;
+
+        try {
+            setIsDuplicating(true);
+            // Use the correct API path with presentationId
+            await slidesApi.duplicateWithPresentation(presentationId, selectedSlideId);
+            toast({ title: '슬라이드 복제됨' });
+            fetchPresentation();
+        } catch (error) {
+            toast({ title: '복제 실패', variant: 'destructive' });
+        } finally {
+            setIsDuplicating(false);
+        }
+    };
+
+    if (!hasHydrated || loading) {
         return (
             <div className="min-h-screen bg-gray-100 flex items-center justify-center">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
@@ -283,14 +443,43 @@ export default function EditorPage() {
                             <Save className="h-4 w-4 mr-1" />
                             {saving ? '저장 중...' : '저장'}
                         </Button>
-                        <Button variant="outline" size="sm">
+                        <Button variant="outline" size="sm" onClick={handleShare}>
                             <Share2 className="h-4 w-4 mr-1" />
                             공유
                         </Button>
-                        <Button variant="outline" size="sm">
-                            <Download className="h-4 w-4 mr-1" />
-                            내보내기
-                        </Button>
+                        <div className="relative">
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setShowExportMenu(!showExportMenu)}
+                                disabled={isExporting}
+                            >
+                                {isExporting ? (
+                                    <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                                ) : (
+                                    <Download className="h-4 w-4 mr-1" />
+                                )}
+                                내보내기
+                            </Button>
+                            {showExportMenu && (
+                                <div className="absolute right-0 top-10 w-48 bg-white rounded-lg shadow-lg border p-2 z-50">
+                                    <button
+                                        onClick={() => handleExport('pptx')}
+                                        className="w-full flex items-center gap-2 px-3 py-2 hover:bg-gray-100 rounded text-sm"
+                                    >
+                                        <FileSpreadsheet className="h-4 w-4 text-orange-500" />
+                                        PowerPoint (.pptx)
+                                    </button>
+                                    <button
+                                        onClick={() => handleExport('pdf')}
+                                        className="w-full flex items-center gap-2 px-3 py-2 hover:bg-gray-100 rounded text-sm"
+                                    >
+                                        <FileText className="h-4 w-4 text-red-500" />
+                                        PDF (.pdf)
+                                    </button>
+                                </div>
+                            )}
+                        </div>
                     </div>
                 </header>
 
@@ -345,7 +534,13 @@ export default function EditorPage() {
                             {/* Slide Preview */}
                             <div className="editor-canvas bg-white shadow-lg rounded-lg overflow-hidden">
                                 {selectedSlide ? (
-                                    <SlidePreview slide={selectedSlide} />
+                                    <EditableSlidePreview
+                                        slide={selectedSlide}
+                                        onUpdate={(updates) => {
+                                            updateSlide(selectedSlide.id, updates);
+                                        }}
+                                        onSave={() => handleSaveSlide(selectedSlide)}
+                                    />
                                 ) : (
                                     <div className="h-full flex items-center justify-center text-gray-400">
                                         슬라이드를 선택하세요
@@ -356,12 +551,25 @@ export default function EditorPage() {
                             {/* Slide Actions */}
                             {selectedSlide && (
                                 <div className="mt-4 flex items-center justify-center gap-2">
-                                    <Button variant="outline" size="sm">
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => setShowAiEditDialog(true)}
+                                    >
                                         <Sparkles className="h-4 w-4 mr-1" />
                                         AI로 편집
                                     </Button>
-                                    <Button variant="outline" size="sm">
-                                        <Copy className="h-4 w-4 mr-1" />
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={handleDuplicateSlide}
+                                        disabled={isDuplicating}
+                                    >
+                                        {isDuplicating ? (
+                                            <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                                        ) : (
+                                            <Copy className="h-4 w-4 mr-1" />
+                                        )}
                                         복제
                                     </Button>
                                     <Button variant="outline" size="sm" className="text-red-600 hover:text-red-700" onClick={handleDeleteSlide}>
@@ -391,7 +599,10 @@ export default function EditorPage() {
                                     <input
                                         type="text"
                                         value={selectedSlide.title || ''}
-                                        onChange={(e) => updateSlide(selectedSlide.id, { title: e.target.value })}
+                                        onChange={(e) => {
+                                            updateSlide(selectedSlide.id, { title: e.target.value });
+                                        }}
+                                        onBlur={() => handleSaveSlide(selectedSlide)}
                                         className="w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
                                     />
                                 </div>
@@ -400,7 +611,11 @@ export default function EditorPage() {
                                     <label className="block text-sm font-medium text-gray-700 mb-1">레이아웃</label>
                                     <select
                                         value={selectedSlide.layout || 'center'}
-                                        onChange={(e) => updateSlide(selectedSlide.id, { layout: e.target.value })}
+                                        onChange={(e) => {
+                                            updateSlide(selectedSlide.id, { layout: e.target.value });
+                                            // Auto-save on layout change
+                                            handleSaveSlideDelayed(selectedSlide.id, { layout: e.target.value });
+                                        }}
                                         className="w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
                                     >
                                         <option value="center">중앙</option>
@@ -416,7 +631,10 @@ export default function EditorPage() {
                                     <label className="block text-sm font-medium text-gray-700 mb-1">노트</label>
                                     <textarea
                                         value={selectedSlide.notes || ''}
-                                        onChange={(e) => updateSlide(selectedSlide.id, { notes: e.target.value })}
+                                        onChange={(e) => {
+                                            updateSlide(selectedSlide.id, { notes: e.target.value });
+                                        }}
+                                        onBlur={() => handleSaveSlide(selectedSlide)}
                                         rows={4}
                                         placeholder="발표자 노트..."
                                         className="w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 resize-none"
@@ -445,12 +663,273 @@ export default function EditorPage() {
                         />
                     )}
                 </div>
+
+                {/* Share Dialog */}
+                {showShareDialog && (
+                    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+                        <div className="bg-white rounded-lg p-6 w-96 shadow-xl">
+                            <div className="flex items-center justify-between mb-4">
+                                <h3 className="text-lg font-medium">공유 링크</h3>
+                                <button
+                                    onClick={() => setShowShareDialog(false)}
+                                    className="p-1 hover:bg-gray-100 rounded"
+                                >
+                                    <X className="h-5 w-5" />
+                                </button>
+                            </div>
+                            <p className="text-sm text-gray-600 mb-4">
+                                이 링크를 공유하면 누구나 프레젠테이션을 볼 수 있습니다.
+                            </p>
+                            <div className="flex gap-2">
+                                <input
+                                    type="text"
+                                    value={shareUrl}
+                                    readOnly
+                                    className="flex-1 px-3 py-2 border rounded-lg text-sm bg-gray-50"
+                                />
+                                <Button onClick={handleCopyShareUrl}>
+                                    <LinkIcon className="h-4 w-4 mr-1" />
+                                    복사
+                                </Button>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* AI Edit Dialog */}
+                {showAiEditDialog && (
+                    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+                        <div className="bg-white rounded-lg p-6 w-[480px] shadow-xl">
+                            <div className="flex items-center justify-between mb-4">
+                                <h3 className="text-lg font-medium flex items-center gap-2">
+                                    <Sparkles className="h-5 w-5 text-purple-600" />
+                                    AI로 슬라이드 편집
+                                </h3>
+                                <button
+                                    onClick={() => {
+                                        setShowAiEditDialog(false);
+                                        setAiEditInstruction('');
+                                    }}
+                                    className="p-1 hover:bg-gray-100 rounded"
+                                >
+                                    <X className="h-5 w-5" />
+                                </button>
+                            </div>
+                            <p className="text-sm text-gray-600 mb-4">
+                                원하는 변경 사항을 자연어로 설명해주세요.
+                            </p>
+                            <textarea
+                                value={aiEditInstruction}
+                                onChange={(e) => setAiEditInstruction(e.target.value)}
+                                placeholder="예: 제목을 더 크게 만들고 글머리 기호를 추가해줘"
+                                rows={4}
+                                className="w-full px-3 py-2 border rounded-lg text-sm resize-none focus:outline-none focus:ring-2 focus:ring-purple-500"
+                            />
+                            <div className="flex justify-end gap-2 mt-4">
+                                <Button
+                                    variant="outline"
+                                    onClick={() => {
+                                        setShowAiEditDialog(false);
+                                        setAiEditInstruction('');
+                                    }}
+                                >
+                                    취소
+                                </Button>
+                                <Button
+                                    onClick={handleAiEdit}
+                                    disabled={isAiEditing || !aiEditInstruction.trim()}
+                                >
+                                    {isAiEditing ? (
+                                        <>
+                                            <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                                            처리 중...
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Sparkles className="h-4 w-4 mr-1" />
+                                            적용
+                                        </>
+                                    )}
+                                </Button>
+                            </div>
+                        </div>
+                    </div>
+                )}
             </div>
         </DndProvider>
     );
 }
 
-// Slide Preview Component
+// Editable Slide Preview Component
+interface EditableSlidePreviewProps {
+    slide: any;
+    onUpdate: (updates: Partial<any>) => void;
+    onSave: () => void;
+}
+
+function EditableSlidePreview({ slide, onUpdate, onSave }: EditableSlidePreviewProps) {
+    const content = slide.content || {};
+    const heading = content.heading || slide.title || '';
+    const subheading = content.subheading || '';
+    const body = content.body || '';
+    const bullets = content.bullets || [];
+
+    const handleHeadingChange = (newHeading: string) => {
+        onUpdate({
+            title: newHeading,
+            content: { ...content, heading: newHeading }
+        });
+    };
+
+    const handleSubheadingChange = (newSubheading: string) => {
+        onUpdate({
+            content: { ...content, subheading: newSubheading }
+        });
+    };
+
+    const handleBodyChange = (newBody: string) => {
+        onUpdate({
+            content: { ...content, body: newBody }
+        });
+    };
+
+    const handleBulletChange = (index: number, newText: string) => {
+        const newBullets = [...bullets];
+        if (typeof bullets[index] === 'string') {
+            newBullets[index] = newText;
+        } else {
+            newBullets[index] = { ...bullets[index], text: newText };
+        }
+        onUpdate({
+            content: { ...content, bullets: newBullets }
+        });
+    };
+
+    const handleAddBullet = () => {
+        const newBullets = [...bullets, '새 항목'];
+        onUpdate({
+            content: { ...content, bullets: newBullets }
+        });
+    };
+
+    const handleRemoveBullet = (index: number) => {
+        const newBullets = bullets.filter((_: any, i: number) => i !== index);
+        onUpdate({
+            content: { ...content, bullets: newBullets }
+        });
+    };
+
+    // Common editable input styles
+    const editableStyle = "bg-transparent border-none outline-none focus:ring-2 focus:ring-purple-500 focus:ring-opacity-50 rounded px-2 py-1 w-full";
+
+    // Render based on slide type
+    switch (slide.type) {
+        case 'TITLE':
+            return (
+                <div className="h-full flex flex-col items-center justify-center p-12 text-center">
+                    <input
+                        type="text"
+                        value={heading}
+                        onChange={(e) => handleHeadingChange(e.target.value)}
+                        onBlur={onSave}
+                        placeholder="제목을 입력하세요"
+                        className={`${editableStyle} text-4xl font-bold text-gray-900 mb-4 text-center`}
+                    />
+                    <input
+                        type="text"
+                        value={subheading}
+                        onChange={(e) => handleSubheadingChange(e.target.value)}
+                        onBlur={onSave}
+                        placeholder="부제목을 입력하세요"
+                        className={`${editableStyle} text-xl text-gray-600 text-center`}
+                    />
+                </div>
+            );
+
+        case 'SECTION_HEADER':
+            return (
+                <div className="h-full flex items-center justify-center bg-gradient-to-br from-purple-600 to-purple-800 p-12">
+                    <input
+                        type="text"
+                        value={heading}
+                        onChange={(e) => handleHeadingChange(e.target.value)}
+                        onBlur={onSave}
+                        placeholder="섹션 제목을 입력하세요"
+                        className={`${editableStyle} text-3xl font-bold text-white text-center bg-white/10`}
+                    />
+                </div>
+            );
+
+        case 'QUOTE':
+            return (
+                <div className="h-full flex flex-col items-center justify-center p-12">
+                    <textarea
+                        value={body || heading}
+                        onChange={(e) => handleBodyChange(e.target.value)}
+                        onBlur={onSave}
+                        placeholder="인용문을 입력하세요"
+                        rows={4}
+                        className={`${editableStyle} text-2xl italic text-gray-700 text-center max-w-2xl resize-none`}
+                    />
+                </div>
+            );
+
+        case 'BULLET_LIST':
+        case 'CONTENT':
+        default:
+            return (
+                <div className="h-full p-8">
+                    <input
+                        type="text"
+                        value={heading}
+                        onChange={(e) => handleHeadingChange(e.target.value)}
+                        onBlur={onSave}
+                        placeholder="제목을 입력하세요"
+                        className={`${editableStyle} text-2xl font-bold text-gray-900 mb-6`}
+                    />
+                    <textarea
+                        value={body}
+                        onChange={(e) => handleBodyChange(e.target.value)}
+                        onBlur={onSave}
+                        placeholder="본문 내용을 입력하세요 (선택사항)"
+                        rows={2}
+                        className={`${editableStyle} text-gray-600 mb-4 resize-none`}
+                    />
+                    <ul className="space-y-2">
+                        {bullets.map((bullet: any, index: number) => (
+                            <li key={index} className="flex items-start gap-2 group">
+                                <span className="text-purple-600 font-bold mt-2">•</span>
+                                <input
+                                    type="text"
+                                    value={typeof bullet === 'string' ? bullet : bullet.text}
+                                    onChange={(e) => handleBulletChange(index, e.target.value)}
+                                    onBlur={onSave}
+                                    placeholder="항목 내용"
+                                    className={`${editableStyle} text-gray-700 flex-1`}
+                                />
+                                <button
+                                    onClick={() => handleRemoveBullet(index)}
+                                    className="opacity-0 group-hover:opacity-100 text-red-500 hover:text-red-700 p-1 transition-opacity"
+                                    title="항목 삭제"
+                                >
+                                    ×
+                                </button>
+                            </li>
+                        ))}
+                    </ul>
+                    <button
+                        onClick={handleAddBullet}
+                        className="mt-4 text-purple-600 hover:text-purple-800 text-sm flex items-center gap-1"
+                    >
+                        <span>+</span>
+                        <span>항목 추가</span>
+                    </button>
+                </div>
+            );
+    }
+}
+
+// Read-only Slide Preview Component (for thumbnails, etc.)
 function SlidePreview({ slide }: { slide: any }) {
     const content = slide.content || {};
     const heading = content.heading || slide.title || '';
@@ -505,3 +984,4 @@ function SlidePreview({ slide }: { slide: any }) {
             );
     }
 }
+

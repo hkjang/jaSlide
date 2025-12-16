@@ -67,7 +67,12 @@ export const slidesApi = {
         api.delete(`/presentations/${presentationId}/slides/${slideId}`),
     reorder: (presentationId: string, data: any) =>
         api.post(`/presentations/${presentationId}/slides/reorder`, data),
+    duplicate: (slideId: string) =>
+        api.post(`/slides/${slideId}/duplicate`),
+    duplicateWithPresentation: (presentationId: string, slideId: string) =>
+        api.post(`/presentations/${presentationId}/slides/${slideId}/duplicate`),
 };
+
 
 // Generation
 export const generationApi = {

@@ -28,19 +28,22 @@ interface Presentation {
 
 export default function DashboardPage() {
     const router = useRouter();
-    const { user, isAuthenticated, clearAuth } = useAuthStore();
+    const { user, isAuthenticated, hasHydrated, clearAuth } = useAuthStore();
     const [presentations, setPresentations] = useState<Presentation[]>([]);
     const [credits, setCredits] = useState<number>(0);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
+        // Wait for hydration before checking auth
+        if (!hasHydrated) return;
+
         if (!isAuthenticated) {
             router.push('/login');
             return;
         }
 
         fetchData();
-    }, [isAuthenticated, router]);
+    }, [hasHydrated, isAuthenticated, router]);
 
     const fetchData = async () => {
         try {
@@ -71,7 +74,7 @@ export default function DashboardPage() {
         });
     };
 
-    if (!isAuthenticated || loading) {
+    if (!hasHydrated || !isAuthenticated || loading) {
         return (
             <div className="min-h-screen bg-gray-50 flex items-center justify-center">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
@@ -182,12 +185,12 @@ export default function DashboardPage() {
                                     <div className="mt-2">
                                         <span
                                             className={`inline-flex px-2 py-1 text-xs rounded-full ${pres.status === 'COMPLETED'
-                                                    ? 'bg-green-100 text-green-700'
-                                                    : pres.status === 'GENERATING'
-                                                        ? 'bg-yellow-100 text-yellow-700'
-                                                        : pres.status === 'FAILED'
-                                                            ? 'bg-red-100 text-red-700'
-                                                            : 'bg-gray-100 text-gray-700'
+                                                ? 'bg-green-100 text-green-700'
+                                                : pres.status === 'GENERATING'
+                                                    ? 'bg-yellow-100 text-yellow-700'
+                                                    : pres.status === 'FAILED'
+                                                        ? 'bg-red-100 text-red-700'
+                                                        : 'bg-gray-100 text-gray-700'
                                                 }`}
                                         >
                                             {pres.status === 'COMPLETED' && '완료'}

@@ -21,8 +21,11 @@ export class ExportController {
     ) {
         const result = await this.exportService.exportToPptx(presentationId, user.id);
 
+        // Encode filename for non-ASCII characters (RFC 5987)
+        const encodedFilename = encodeURIComponent(result.filename).replace(/['()]/g, escape);
+
         res.setHeader('Content-Type', result.mimeType);
-        res.setHeader('Content-Disposition', `attachment; filename="${result.filename}"`);
+        res.setHeader('Content-Disposition', `attachment; filename*=UTF-8''${encodedFilename}`);
         res.send(result.buffer);
     }
 
@@ -35,8 +38,11 @@ export class ExportController {
     ) {
         const result = await this.exportService.exportToPdf(presentationId, user.id);
 
+        // Encode filename for non-ASCII characters (RFC 5987)
+        const encodedFilename = encodeURIComponent(result.filename).replace(/['()]/g, escape);
+
         res.setHeader('Content-Type', result.mimeType);
-        res.setHeader('Content-Disposition', `attachment; filename="${result.filename}"`);
+        res.setHeader('Content-Disposition', `attachment; filename*=UTF-8''${encodedFilename}`);
         res.send(result.buffer);
     }
 
