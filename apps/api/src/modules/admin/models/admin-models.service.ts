@@ -34,6 +34,7 @@ export class AdminModelsService {
                 provider: dto.provider,
                 modelId: dto.modelId,
                 endpoint: dto.endpoint,
+                apiKey: dto.apiKey,
                 apiKeyEnvVar: dto.apiKeyEnvVar,
                 maxTokens: dto.maxTokens ?? 4096,
                 rateLimit: dto.rateLimit,

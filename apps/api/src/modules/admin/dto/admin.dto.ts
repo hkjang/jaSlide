@@ -279,8 +279,13 @@ export class AdminCreateLlmModelDto {
     @IsString()
     endpoint?: string;
 
+    @IsOptional()
     @IsString()
-    apiKeyEnvVar: string;
+    apiKey?: string;
+
+    @IsOptional()
+    @IsString()
+    apiKeyEnvVar?: string;
 
     @IsOptional()
     @IsInt()
@@ -315,6 +320,14 @@ export class AdminUpdateLlmModelDto {
     @IsOptional()
     @IsString()
     endpoint?: string;
+
+    @IsOptional()
+    @IsString()
+    apiKey?: string;
+
+    @IsOptional()
+    @IsString()
+    apiKeyEnvVar?: string;
 
     @IsOptional()
     @IsInt()

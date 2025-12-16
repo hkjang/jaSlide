@@ -446,10 +446,11 @@ model PricingPlan {
 model LlmModel {
   id            String   @id @default(cuid())
   name          String   @unique
-  provider      String   // 'openai', 'anthropic', 'azure', 'google'
+  provider      String   // 'openai', 'anthropic', 'azure', 'google', 'vllm'
   modelId       String   // actual API model id
   endpoint      String?
-  apiKeyEnvVar  String   // env variable name for API key
+  apiKey        String?  // API key (direct storage, encrypted recommended)
+  apiKeyEnvVar  String?  // env variable name for API key (fallback)
   maxTokens     Int      @default(4096)
   rateLimit     Int?     // requests per minute
   costPerToken  Decimal  @db.Decimal(10, 8)

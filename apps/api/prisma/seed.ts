@@ -332,7 +332,7 @@ async function main() {
     // LLM Models
     // ============================================
     await Promise.all([
-        prisma.llmModel.create({ data: { name: 'GPT-4 Turbo', provider: 'openai', modelId: 'gpt-4-turbo-preview', apiKeyEnvVar: 'OPENAI_API_KEY', maxTokens: 128000, costPerToken: 0.00003, isDefault: true } }),
+        prisma.llmModel.create({ data: { name: 'GPT-4 Turbo', provider: 'openai', modelId: 'gpt-4-turbo-preview', apiKeyEnvVar: 'OPENAI_API_KEY', maxTokens: 128000, costPerToken: 0.00003, isDefault: false } }),
         prisma.llmModel.create({ data: { name: 'GPT-3.5 Turbo', provider: 'openai', modelId: 'gpt-3.5-turbo', apiKeyEnvVar: 'OPENAI_API_KEY', maxTokens: 16384, costPerToken: 0.000002 } }),
         prisma.llmModel.create({ data: { name: 'GPT-4o', provider: 'openai', modelId: 'gpt-4o', apiKeyEnvVar: 'OPENAI_API_KEY', maxTokens: 128000, costPerToken: 0.000025 } }),
         prisma.llmModel.create({ data: { name: 'Claude 3 Opus', provider: 'anthropic', modelId: 'claude-3-opus-20240229', apiKeyEnvVar: 'ANTHROPIC_API_KEY', maxTokens: 200000, costPerToken: 0.00006 } }),
@@ -342,6 +342,9 @@ async function main() {
         prisma.llmModel.create({ data: { name: 'vLLM Llama 3.1', provider: 'vllm', modelId: 'meta-llama/Llama-3.1-70B-Instruct', endpoint: 'http://localhost:8000/v1', apiKeyEnvVar: 'VLLM_API_KEY', maxTokens: 128000, costPerToken: 0.0000015 } }),
         prisma.llmModel.create({ data: { name: 'vLLM Qwen 2.5', provider: 'vllm', modelId: 'Qwen/Qwen2.5-72B-Instruct', endpoint: 'http://localhost:8000/v1', apiKeyEnvVar: 'VLLM_API_KEY', maxTokens: 32768, costPerToken: 0.000002 } }),
         prisma.llmModel.create({ data: { name: 'Azure GPT-4', provider: 'azure', modelId: 'gpt-4', endpoint: 'https://your-resource.openai.azure.com/', apiKeyEnvVar: 'AZURE_OPENAI_KEY', maxTokens: 8192, costPerToken: 0.00003 } }),
+        // Local LLM models (no API key required)
+        prisma.llmModel.create({ data: { name: 'Ollama GPT-OSS 20B', provider: 'ollama', modelId: 'gpt-oss:20b', endpoint: 'http://localhost:11434/v1', maxTokens: 32768, costPerToken: 0, isDefault: true } }),
+        prisma.llmModel.create({ data: { name: 'vLLM GPT-OSS', provider: 'vllm', modelId: 'vllm/gptoss', endpoint: 'https://vllm.xxxxxxx.com/v1', maxTokens: 32768, costPerToken: 0 } }),
     ]);
 
     // ============================================
