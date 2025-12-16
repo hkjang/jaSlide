@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { Plus, MessageSquare, History, Play, Trash2, ChevronRight } from 'lucide-react';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
 
 interface Prompt {
     id: string;

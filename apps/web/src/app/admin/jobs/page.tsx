@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { RefreshCw, Play, StopCircle, XCircle, Filter } from 'lucide-react';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
 
 interface Job {
     id: string;

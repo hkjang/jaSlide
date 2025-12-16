@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { Plus, Cpu, Trash2, Edit, Star, ToggleLeft, ToggleRight, RefreshCw } from 'lucide-react';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
 
 interface LlmModel {
     id: string;

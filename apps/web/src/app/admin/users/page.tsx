@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { Plus, Search, Filter, MoreVertical, RefreshCw } from 'lucide-react';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
 
 interface User {
     id: string;
@@ -153,16 +153,16 @@ export default function AdminUsersPage() {
                                     </td>
                                     <td className="px-6 py-4">
                                         <span className={`px-2 py-1 text-xs rounded-full ${user.role === 'ADMIN' ? 'bg-purple-100 text-purple-800' :
-                                                user.role === 'ORG_ADMIN' ? 'bg-blue-100 text-blue-800' :
-                                                    'bg-gray-100 text-gray-800'
+                                            user.role === 'ORG_ADMIN' ? 'bg-blue-100 text-blue-800' :
+                                                'bg-gray-100 text-gray-800'
                                             }`}>
                                             {user.role}
                                         </span>
                                     </td>
                                     <td className="px-6 py-4">
                                         <span className={`px-2 py-1 text-xs rounded-full ${user.status === 'ACTIVE' ? 'bg-green-100 text-green-800' :
-                                                user.status === 'SUSPENDED' ? 'bg-red-100 text-red-800' :
-                                                    'bg-gray-100 text-gray-800'
+                                            user.status === 'SUSPENDED' ? 'bg-red-100 text-red-800' :
+                                                'bg-gray-100 text-gray-800'
                                             }`}>
                                             {user.status}
                                         </span>

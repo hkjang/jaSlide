@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { Download, Filter, RefreshCw, FileText, Activity } from 'lucide-react';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
 
 interface AuditLog {
     id: string;
@@ -187,9 +187,9 @@ export default function AdminLogsPage() {
                                     </td>
                                     <td className="px-6 py-4">
                                         <span className={`px-2 py-1 text-xs rounded ${log.method === 'GET' ? 'bg-green-100 text-green-800' :
-                                                log.method === 'POST' ? 'bg-blue-100 text-blue-800' :
-                                                    log.method === 'PUT' || log.method === 'PATCH' ? 'bg-yellow-100 text-yellow-800' :
-                                                        'bg-red-100 text-red-800'
+                                            log.method === 'POST' ? 'bg-blue-100 text-blue-800' :
+                                                log.method === 'PUT' || log.method === 'PATCH' ? 'bg-yellow-100 text-yellow-800' :
+                                                    'bg-red-100 text-red-800'
                                             }`}>
                                             {log.method}
                                         </span>
@@ -197,8 +197,8 @@ export default function AdminLogsPage() {
                                     <td className="px-6 py-4 text-sm font-mono text-gray-500">{log.path}</td>
                                     <td className="px-6 py-4">
                                         <span className={`px-2 py-1 text-xs rounded ${log.statusCode < 300 ? 'bg-green-100 text-green-800' :
-                                                log.statusCode < 400 ? 'bg-yellow-100 text-yellow-800' :
-                                                    'bg-red-100 text-red-800'
+                                            log.statusCode < 400 ? 'bg-yellow-100 text-yellow-800' :
+                                                'bg-red-100 text-red-800'
                                             }`}>
                                             {log.statusCode}
                                         </span>
