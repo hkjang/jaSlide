@@ -16,6 +16,19 @@ import { AdminAlertsModule } from './alerts/admin-alerts.module';
 import { AdminDashboardController } from './admin-dashboard.controller';
 import { AdminDashboardService } from './admin-dashboard.service';
 import { PrismaModule } from '../../prisma/prisma.module';
+// New Admin CRUD Modules
+import { AdminSecurityPoliciesModule } from './security-policies/admin-security-policies.module';
+import { AdminSessionsModule } from './sessions/admin-sessions.module';
+import { AdminPermissionsModule } from './permissions/admin-permissions.module';
+import { AdminLayoutsModule } from './layouts/admin-layouts.module';
+import { AdminThemesModule } from './themes/admin-themes.module';
+import { AdminFontSetsModule } from './font-sets/admin-font-sets.module';
+import { AdminColorPalettesModule } from './color-palettes/admin-color-palettes.module';
+import { AdminSeedDataModule } from './seed-data/admin-seed-data.module';
+import { AdminBillingModule } from './billing/admin-billing.module';
+import { AdminApiKeysModule } from './api-keys/admin-api-keys.module';
+import { AdminWebhooksModule } from './webhooks/admin-webhooks.module';
+import { AdminIntegrationsModule } from './integrations/admin-integrations.module';
 
 @Module({
     imports: [
@@ -34,8 +47,22 @@ import { PrismaModule } from '../../prisma/prisma.module';
         AdminLogsModule,
         AdminOperationsModule,
         AdminAlertsModule,
+        // New Admin CRUD Modules
+        AdminSecurityPoliciesModule,
+        AdminSessionsModule,
+        AdminPermissionsModule,
+        AdminLayoutsModule,
+        AdminThemesModule,
+        AdminFontSetsModule,
+        AdminColorPalettesModule,
+        AdminSeedDataModule,
+        AdminBillingModule,
+        AdminApiKeysModule,
+        AdminWebhooksModule,
+        AdminIntegrationsModule,
     ],
     controllers: [AdminDashboardController],
     providers: [AdminDashboardService],
 })
 export class AdminModule { }
+
