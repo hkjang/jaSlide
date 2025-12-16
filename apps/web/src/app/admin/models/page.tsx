@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Plus, Cpu, Trash2, Edit, Star, ToggleLeft, ToggleRight, RefreshCw } from 'lucide-react';
+import { Plus, Cpu, Trash2, Edit, Star, ToggleLeft, ToggleRight, RefreshCw, X } from 'lucide-react';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
 
@@ -21,15 +21,18 @@ interface LlmModel {
     createdAt: string;
 }
 
+const defaultFormData = {
+    name: '', provider: 'openai', modelId: '', endpoint: '', apiKeyEnvVar: 'OPENAI_API_KEY',
+    maxTokens: 4096, rateLimit: '', costPerToken: 0.002, isActive: true
+};
+
 export default function AdminModelsPage() {
     const [models, setModels] = useState<LlmModel[]>([]);
     const [loading, setLoading] = useState(true);
     const [showModal, setShowModal] = useState(false);
     const [editingModel, setEditingModel] = useState<LlmModel | null>(null);
-    const [formData, setFormData] = useState({
-        name: '', provider: 'openai', modelId: '', endpoint: '', apiKeyEnvVar: 'OPENAI_API_KEY',
-        maxTokens: 4096, rateLimit: '', costPerToken: 0.002
-    });
+    const [formData, setFormData] = useState(defaultFormData);
+    const [submitting, setSubmitting] = useState(false);
 
     useEffect(() => {
         fetchModels();
@@ -40,9 +43,62 @@ export default function AdminModelsPage() {
         try {
             const token = localStorage.getItem('accessToken');
             const res = await fetch(`${API_URL}/admin/models`, { headers: { Authorization: `Bearer ${token}` } });
-            if (res.ok) setModels((await res.json()).data);
+            if (res.ok) setModels((await res.json()).data || []);
         } finally {
             setLoading(false);
+        }
+    };
+
+    const openCreateModal = () => {
+        setEditingModel(null);
+        setFormData(defaultFormData);
+        setShowModal(true);
+    };
+
+    const openEditModal = (model: LlmModel) => {
+        setEditingModel(model);
+        setFormData({
+            name: model.name,
+            provider: model.provider,
+            modelId: model.modelId,
+            endpoint: model.endpoint || '',
+            apiKeyEnvVar: model.apiKeyEnvVar,
+            maxTokens: model.maxTokens,
+            rateLimit: model.rateLimit?.toString() || '',
+            costPerToken: model.costPerToken,
+            isActive: model.isActive,
+        });
+        setShowModal(true);
+    };
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setSubmitting(true);
+        const token = localStorage.getItem('accessToken');
+
+        const payload = {
+            ...formData,
+            rateLimit: formData.rateLimit ? parseInt(formData.rateLimit as string) : null,
+        };
+
+        try {
+            if (editingModel) {
+                await fetch(`${API_URL}/admin/models/${editingModel.id}`, {
+                    method: 'PATCH',
+                    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload),
+                });
+            } else {
+                await fetch(`${API_URL}/admin/models`, {
+                    method: 'POST',
+                    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload),
+                });
+            }
+            setShowModal(false);
+            fetchModels();
+        } finally {
+            setSubmitting(false);
         }
     };
 
@@ -77,6 +133,7 @@ export default function AdminModelsPage() {
         anthropic: 'bg-orange-100 text-orange-800',
         google: 'bg-blue-100 text-blue-800',
         azure: 'bg-sky-100 text-sky-800',
+        vllm: 'bg-violet-100 text-violet-800',
     };
 
     return (
@@ -90,7 +147,7 @@ export default function AdminModelsPage() {
                     <button onClick={fetchModels} className="p-2 bg-gray-100 rounded-lg hover:bg-gray-200">
                         <RefreshCw size={20} />
                     </button>
-                    <button onClick={() => setShowModal(true)} className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700">
+                    <button onClick={openCreateModal} className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700">
                         <Plus size={20} />
                         모델 추가
                     </button>
@@ -102,6 +159,10 @@ export default function AdminModelsPage() {
                 {loading ? (
                     <div className="col-span-full p-8 text-center">
                         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600 mx-auto" />
+                    </div>
+                ) : models.length === 0 ? (
+                    <div className="col-span-full p-8 text-center text-gray-500">
+                        등록된 모델이 없습니다. 새 모델을 추가해주세요.
                     </div>
                 ) : (
                     models.map((model) => (
@@ -148,13 +209,79 @@ export default function AdminModelsPage() {
                                         기본 설정
                                     </button>
                                 )}
-                                <button className="p-2 hover:bg-gray-100 rounded-lg"><Edit size={16} className="text-gray-500" /></button>
+                                <button onClick={() => openEditModal(model)} className="p-2 hover:bg-gray-100 rounded-lg"><Edit size={16} className="text-gray-500" /></button>
                                 <button onClick={() => deleteModel(model.id)} className="p-2 hover:bg-red-50 rounded-lg"><Trash2 size={16} className="text-red-500" /></button>
                             </div>
                         </div>
                     ))
                 )}
             </div>
+
+            {/* Modal */}
+            {showModal && (
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+                    <div className="bg-white rounded-lg shadow-xl w-full max-w-md mx-4">
+                        <div className="flex items-center justify-between p-4 border-b">
+                            <h2 className="text-lg font-semibold">{editingModel ? '모델 수정' : '새 모델 추가'}</h2>
+                            <button onClick={() => setShowModal(false)} className="p-1 hover:bg-gray-100 rounded"><X size={20} /></button>
+                        </div>
+                        <form onSubmit={handleSubmit} className="p-4 space-y-4">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">모델 이름</label>
+                                <input type="text" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                                    className="w-full px-3 py-2 border rounded-lg" required placeholder="예: GPT-4o" />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Provider</label>
+                                <select value={formData.provider} onChange={(e) => setFormData({ ...formData, provider: e.target.value })}
+                                    className="w-full px-3 py-2 border rounded-lg">
+                                    <option value="openai">OpenAI</option>
+                                    <option value="anthropic">Anthropic</option>
+                                    <option value="google">Google</option>
+                                    <option value="azure">Azure OpenAI</option>
+                                    <option value="vllm">vLLM (OpenAI Compatible)</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Model ID</label>
+                                <input type="text" value={formData.modelId} onChange={(e) => setFormData({ ...formData, modelId: e.target.value })}
+                                    className="w-full px-3 py-2 border rounded-lg" required placeholder="예: gpt-4o" />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">API Key 환경변수</label>
+                                <input type="text" value={formData.apiKeyEnvVar} onChange={(e) => setFormData({ ...formData, apiKeyEnvVar: e.target.value })}
+                                    className="w-full px-3 py-2 border rounded-lg" placeholder="OPENAI_API_KEY" />
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Max Tokens</label>
+                                    <input type="number" value={formData.maxTokens} onChange={(e) => setFormData({ ...formData, maxTokens: parseInt(e.target.value) })}
+                                        className="w-full px-3 py-2 border rounded-lg" />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Cost/Token ($)</label>
+                                    <input type="number" step="0.0001" value={formData.costPerToken} onChange={(e) => setFormData({ ...formData, costPerToken: parseFloat(e.target.value) })}
+                                        className="w-full px-3 py-2 border rounded-lg" />
+                                </div>
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Rate Limit (요청/분)</label>
+                                <input type="number" value={formData.rateLimit} onChange={(e) => setFormData({ ...formData, rateLimit: e.target.value })}
+                                    className="w-full px-3 py-2 border rounded-lg" placeholder="선택사항" />
+                            </div>
+                            <div className="flex justify-end gap-2 pt-4 border-t">
+                                <button type="button" onClick={() => setShowModal(false)} className="px-4 py-2 text-gray-700 border rounded-lg hover:bg-gray-50">
+                                    취소
+                                </button>
+                                <button type="submit" disabled={submitting} className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50">
+                                    {submitting ? '저장 중...' : (editingModel ? '수정' : '추가')}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
+

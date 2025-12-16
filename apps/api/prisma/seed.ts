@@ -7,10 +7,19 @@ async function main() {
     console.log('🌱 Seeding database with realistic Korean data...');
 
     // Clean existing data
+    await prisma.$executeRaw`TRUNCATE TABLE "PromptTemplateVersion" CASCADE`;
+    await prisma.$executeRaw`TRUNCATE TABLE "PromptRegistry" CASCADE`;
+    await prisma.$executeRaw`TRUNCATE TABLE "LlmModel" CASCADE`;
     await prisma.$executeRaw`TRUNCATE TABLE "User" CASCADE`;
     await prisma.$executeRaw`TRUNCATE TABLE "Organization" CASCADE`;
     await prisma.$executeRaw`TRUNCATE TABLE "Template" CASCADE`;
     await prisma.$executeRaw`TRUNCATE TABLE "Role" CASCADE`;
+    await prisma.$executeRaw`TRUNCATE TABLE "CreditPolicy" CASCADE`;
+    await prisma.$executeRaw`TRUNCATE TABLE "PricingPlan" CASCADE`;
+    await prisma.$executeRaw`TRUNCATE TABLE "ColorPalette" CASCADE`;
+    await prisma.$executeRaw`TRUNCATE TABLE "FontSet" CASCADE`;
+    await prisma.$executeRaw`TRUNCATE TABLE "SystemPolicy" CASCADE`;
+    await prisma.$executeRaw`TRUNCATE TABLE "LayoutRule" CASCADE`;
 
     // ============================================
     // Organizations
@@ -325,8 +334,14 @@ async function main() {
     await Promise.all([
         prisma.llmModel.create({ data: { name: 'GPT-4 Turbo', provider: 'openai', modelId: 'gpt-4-turbo-preview', apiKeyEnvVar: 'OPENAI_API_KEY', maxTokens: 128000, costPerToken: 0.00003, isDefault: true } }),
         prisma.llmModel.create({ data: { name: 'GPT-3.5 Turbo', provider: 'openai', modelId: 'gpt-3.5-turbo', apiKeyEnvVar: 'OPENAI_API_KEY', maxTokens: 16384, costPerToken: 0.000002 } }),
+        prisma.llmModel.create({ data: { name: 'GPT-4o', provider: 'openai', modelId: 'gpt-4o', apiKeyEnvVar: 'OPENAI_API_KEY', maxTokens: 128000, costPerToken: 0.000025 } }),
         prisma.llmModel.create({ data: { name: 'Claude 3 Opus', provider: 'anthropic', modelId: 'claude-3-opus-20240229', apiKeyEnvVar: 'ANTHROPIC_API_KEY', maxTokens: 200000, costPerToken: 0.00006 } }),
+        prisma.llmModel.create({ data: { name: 'Claude 3.5 Sonnet', provider: 'anthropic', modelId: 'claude-3-5-sonnet-20241022', apiKeyEnvVar: 'ANTHROPIC_API_KEY', maxTokens: 200000, costPerToken: 0.000015 } }),
         prisma.llmModel.create({ data: { name: 'Gemini Pro', provider: 'google', modelId: 'gemini-pro', apiKeyEnvVar: 'GOOGLE_AI_KEY', maxTokens: 32768, costPerToken: 0.00001 } }),
+        prisma.llmModel.create({ data: { name: 'Gemini 1.5 Pro', provider: 'google', modelId: 'gemini-1.5-pro', apiKeyEnvVar: 'GOOGLE_AI_KEY', maxTokens: 1000000, costPerToken: 0.000007 } }),
+        prisma.llmModel.create({ data: { name: 'vLLM Llama 3.1', provider: 'vllm', modelId: 'meta-llama/Llama-3.1-70B-Instruct', endpoint: 'http://localhost:8000/v1', apiKeyEnvVar: 'VLLM_API_KEY', maxTokens: 128000, costPerToken: 0.0000015 } }),
+        prisma.llmModel.create({ data: { name: 'vLLM Qwen 2.5', provider: 'vllm', modelId: 'Qwen/Qwen2.5-72B-Instruct', endpoint: 'http://localhost:8000/v1', apiKeyEnvVar: 'VLLM_API_KEY', maxTokens: 32768, costPerToken: 0.000002 } }),
+        prisma.llmModel.create({ data: { name: 'Azure GPT-4', provider: 'azure', modelId: 'gpt-4', endpoint: 'https://your-resource.openai.azure.com/', apiKeyEnvVar: 'AZURE_OPENAI_KEY', maxTokens: 8192, costPerToken: 0.00003 } }),
     ]);
 
     // ============================================
@@ -358,6 +373,66 @@ async function main() {
                         version: 1,
                         content: '다음 슬라이드의 내용을 작성해주세요:\n제목: {{title}}\n유형: {{slideType}}\n키포인트: {{keyPoints}}',
                         variables: ['title', 'slideType', 'keyPoints'],
+                        isActive: true,
+                    },
+                },
+            },
+        }),
+        prisma.promptRegistry.create({
+            data: {
+                name: 'design_suggestion',
+                category: 'design',
+                description: '슬라이드 디자인 제안용 프롬프트',
+                versions: {
+                    create: {
+                        version: 1,
+                        content: '다음 슬라이드에 적합한 디자인 요소를 제안해주세요:\n슬라이드 유형: {{slideType}}\n내용: {{content}}\n브랜드 컬러: {{brandColor}}\n분위기: {{mood}}',
+                        variables: ['slideType', 'content', 'brandColor', 'mood'],
+                        isActive: true,
+                    },
+                },
+            },
+        }),
+        prisma.promptRegistry.create({
+            data: {
+                name: 'speaker_notes',
+                category: 'content',
+                description: '발표자 노트 생성용 프롬프트',
+                versions: {
+                    create: {
+                        version: 1,
+                        content: '다음 슬라이드에 대한 발표자 노트를 작성해주세요:\n슬라이드 제목: {{title}}\n슬라이드 내용: {{content}}\n발표 시간: {{duration}}분\n청중 수준: {{audienceLevel}}',
+                        variables: ['title', 'content', 'duration', 'audienceLevel'],
+                        isActive: true,
+                    },
+                },
+            },
+        }),
+        prisma.promptRegistry.create({
+            data: {
+                name: 'document_summary',
+                category: 'generation',
+                description: '문서 요약 및 핵심 추출용 프롬프트',
+                versions: {
+                    create: {
+                        version: 1,
+                        content: '다음 문서의 핵심 내용을 요약하고 프레젠테이션에 사용할 주요 포인트를 추출해주세요:\n문서 유형: {{documentType}}\n문서 내용: {{documentContent}}\n목표 슬라이드 수: {{targetSlides}}',
+                        variables: ['documentType', 'documentContent', 'targetSlides'],
+                        isActive: true,
+                    },
+                },
+            },
+        }),
+        prisma.promptRegistry.create({
+            data: {
+                name: 'chart_recommendation',
+                category: 'design',
+                description: '데이터 시각화 차트 추천용 프롬프트',
+                versions: {
+                    create: {
+                        version: 1,
+                        content: '다음 데이터에 가장 적합한 차트 유형을 추천하고 시각화 방법을 제안해주세요:\n데이터 유형: {{dataType}}\n데이터 포인트 수: {{dataPoints}}\n비교 목적: {{comparisonGoal}}\n청중: {{audience}}',
+                        variables: ['dataType', 'dataPoints', 'comparisonGoal', 'audience'],
                         isActive: true,
                     },
                 },
