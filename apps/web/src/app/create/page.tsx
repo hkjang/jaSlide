@@ -23,7 +23,20 @@ import {
     Eye,
     ChevronDown,
     Check,
+    Palette,
 } from 'lucide-react';
+
+interface Template {
+    id: string;
+    name: string;
+    description?: string;
+    thumbnail?: string;
+    category: string;
+    config?: {
+        colors?: { primary?: string; background?: string; text?: string };
+        backgrounds?: { value?: string };
+    };
+}
 
 const STEPS = ['목적', '입력', '미리보기', '옵션', '생성'] as const;
 
@@ -47,6 +60,8 @@ export default function CreatePage() {
     const [slideCount, setSlideCount] = useState(10);
     const [language, setLanguage] = useState('ko');
     const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
+    const [templates, setTemplates] = useState<Template[]>([]);
+    const [loadingTemplates, setLoadingTemplates] = useState(false);
     const [includeImages, setIncludeImages] = useState(true);
     const [includeCharts, setIncludeCharts] = useState(true);
 
@@ -64,6 +79,27 @@ export default function CreatePage() {
             setShowOnboarding(false);
             setStep(1);
         }
+    }, []);
+
+    // Fetch templates on mount
+    useEffect(() => {
+        const fetchTemplates = async () => {
+            setLoadingTemplates(true);
+            try {
+                const [apiRes, defaultsRes] = await Promise.all([
+                    templatesApi.list().catch(() => ({ data: [] })),
+                    templatesApi.defaults().catch(() => ({ data: [] }))
+                ]);
+                const apiTemplates = Array.isArray(apiRes.data) ? apiRes.data : [];
+                const defaultTemplates = Array.isArray(defaultsRes.data) ? defaultsRes.data : [];
+                setTemplates([...defaultTemplates, ...apiTemplates]);
+            } catch (err) {
+                console.error('Failed to fetch templates:', err);
+            } finally {
+                setLoadingTemplates(false);
+            }
+        };
+        fetchTemplates();
     }, []);
 
     const onDrop = useCallback(async (acceptedFiles: File[]) => {
@@ -418,6 +454,59 @@ export default function CreatePage() {
                         <div>
                             <h2 className="text-2xl font-bold text-gray-900 mb-2">생성 옵션</h2>
                             <p className="text-gray-500">프레젠테이션 스타일을 설정하세요</p>
+                        </div>
+
+                        {/* Template Selection */}
+                        <div className="bg-white rounded-lg border p-6">
+                            <label className="block text-sm font-medium text-gray-700 mb-3">
+                                <Palette className="h-4 w-4 inline mr-2" />
+                                템플릿 선택
+                            </label>
+                            {loadingTemplates ? (
+                                <div className="flex items-center justify-center py-8">
+                                    <Loader2 className="h-6 w-6 animate-spin text-purple-600" />
+                                </div>
+                            ) : templates.length === 0 ? (
+                                <p className="text-sm text-gray-500 text-center py-4">사용 가능한 템플릿이 없습니다.</p>
+                            ) : (
+                                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                                    {templates.map((template) => (
+                                        <button
+                                            key={template.id}
+                                            type="button"
+                                            onClick={() => setSelectedTemplateId(template.id === selectedTemplateId ? null : template.id)}
+                                            className={`relative text-left rounded-lg overflow-hidden border-2 transition-all ${selectedTemplateId === template.id
+                                                    ? 'border-purple-600 ring-2 ring-purple-200'
+                                                    : 'border-gray-200 hover:border-gray-300'
+                                                }`}
+                                        >
+                                            <div
+                                                className="h-20 flex items-center justify-center text-2xl"
+                                                style={{
+                                                    background: template.config?.backgrounds?.value || template.config?.colors?.background || 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                                                    color: template.config?.colors?.text || '#ffffff'
+                                                }}
+                                            >
+                                                <span style={{ color: template.config?.colors?.primary || '#ffffff' }}>Aa</span>
+                                            </div>
+                                            <div className="p-2 bg-white">
+                                                <p className="text-sm font-medium text-gray-900 truncate">{template.name}</p>
+                                                <p className="text-xs text-gray-500 truncate">{template.category}</p>
+                                            </div>
+                                            {selectedTemplateId === template.id && (
+                                                <div className="absolute top-2 right-2 w-5 h-5 bg-purple-600 rounded-full flex items-center justify-center">
+                                                    <Check className="h-3 w-3 text-white" />
+                                                </div>
+                                            )}
+                                        </button>
+                                    ))}
+                                </div>
+                            )}
+                            {selectedTemplateId && (
+                                <p className="mt-3 text-sm text-purple-600">
+                                    선택됨: {templates.find(t => t.id === selectedTemplateId)?.name}
+                                </p>
+                            )}
                         </div>
 
                         <div className="bg-white rounded-lg border p-6 space-y-6">
