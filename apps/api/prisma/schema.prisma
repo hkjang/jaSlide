@@ -33,6 +33,18 @@ model User {
   accounts           Account[]
   sessions           Session[]
   userRoles          UserRoleAssignment[]
+  // CRUD UIUX Extension
+  inputPrompts       InputPrompt[]
+  inputCombinations  InputCombination[]
+  favorites          Favorite[]
+  recentWorks        RecentWork[]
+  comments           Comment[]
+  collaborations     Collaborator[]
+  exportPresets      ExportPreset[]
+  // UX Enhancement Extension
+  userPreference     UserPreference?
+  uxState            UXState?
+  autoRules          AutoRule[]
   lastLoginAt        DateTime?
   createdAt          DateTime             @default(now())
   updatedAt          DateTime             @updatedAt
@@ -104,6 +116,7 @@ model Organization {
   templates     Template[]
   assets        Asset[]
   colorPalettes ColorPalette[]
+  fontSets      FontSet[]
   createdAt     DateTime           @default(now())
   updatedAt     DateTime           @updatedAt
 
@@ -130,16 +143,23 @@ model Presentation {
   userId        String
   template      Template?          @relation(fields: [templateId], references: [id])
   templateId    String?
-  slides        Slide[]
-  status        PresentationStatus @default(DRAFT)
-  sourceType    SourceType
-  sourceContent String?            @db.Text
-  metadata      Json?
-  isPublic      Boolean            @default(false)
-  shareToken    String?            @unique
-  generationJob GenerationJob?
-  createdAt     DateTime           @default(now())
-  updatedAt     DateTime           @updatedAt
+  slides            Slide[]
+  status            PresentationStatus @default(DRAFT)
+  sourceType        SourceType
+  sourceContent     String?            @db.Text
+  metadata          Json?
+  isPublic          Boolean            @default(false)
+  shareToken        String?            @unique
+  generationJob     GenerationJob?
+  // CRUD UIUX Extension
+  versions          Version[]
+  undoRedoSnapshots UndoRedoSnapshot[]
+  comments          Comment[]
+  collaborators     Collaborator[]
+  recentWorks       RecentWork[]
+  shareLogs         ShareLog[]
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
 
   @@index([userId])
   @@index([templateId])
@@ -173,6 +193,9 @@ model Slide {
   content        Json
   layout         String       @default("center")
   notes          String?      @db.Text
+  // CRUD UIUX Extension
+  blocks         Block[]
+  comments       Comment[]    @relation("SlideComments")
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
 
@@ -545,5 +568,290 @@ model ApiLog {
   @@index([path])
   @@index([statusCode])
   @@index([createdAt])
+}
+
+// ============================================
+// CRUD UIUX Extension - Versioning & Undo/Redo
+// ============================================
+
+model Version {
+  id             String       @id @default(cuid())
+  presentation   Presentation @relation(fields: [presentationId], references: [id], onDelete: Cascade)
+  presentationId String
+  versionNumber  Int
+  name           String?
+  snapshot       Json         // 전체 프레젠테이션 상태
+  createdBy      String
+  createdAt      DateTime     @default(now())
+
+  @@unique([presentationId, versionNumber])
+  @@index([presentationId])
+}
+
+model UndoRedoSnapshot {
+  id             String       @id @default(cuid())
+  presentation   Presentation @relation(fields: [presentationId], references: [id], onDelete: Cascade)
+  presentationId String
+  slideId        String?
+  action         String       // 'slide_add', 'slide_update', 'block_edit' 등
+  beforeState    Json
+  afterState     Json
+  createdAt      DateTime     @default(now())
+
+  @@index([presentationId])
+}
+
+// ============================================
+// CRUD UIUX Extension - Block-level Content
+// ============================================
+
+model Block {
+  id        String    @id @default(cuid())
+  slide     Slide     @relation(fields: [slideId], references: [id], onDelete: Cascade)
+  slideId   String
+  type      BlockType
+  order     Int
+  content   Json      // type별 콘텐츠 구조
+  style     Json      @default("{}")
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@index([slideId])
+  @@index([type])
+}
+
+enum BlockType {
+  TEXT
+  IMAGE
+  CHART
+  TABLE
+  ICON
+  SHAPE
+}
+
+// ============================================
+// CRUD UIUX Extension - Input Context & History
+// ============================================
+
+model InputPrompt {
+  id        String   @id @default(cuid())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String
+  content   String   @db.Text
+  metadata  Json?
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+
+model InputCombination {
+  id          String   @id @default(cuid())
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId      String
+  promptText  String?  @db.Text
+  documentUrl String?
+  sourceUrl   String?
+  metadata    Json?
+  createdAt   DateTime @default(now())
+
+  @@index([userId])
+}
+
+// ============================================
+// CRUD UIUX Extension - User Preferences
+// ============================================
+
+model Favorite {
+  id           String   @id @default(cuid())
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId       String
+  resourceType String   // 'template', 'palette', 'font'
+  resourceId   String
+  order        Int      @default(0)
+  createdAt    DateTime @default(now())
+
+  @@unique([userId, resourceType, resourceId])
+  @@index([userId])
+}
+
+model RecentWork {
+  id             String       @id @default(cuid())
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId         String
+  presentation   Presentation @relation(fields: [presentationId], references: [id], onDelete: Cascade)
+  presentationId String
+  isPinned       Boolean      @default(false)
+  accessedAt     DateTime     @default(now())
+
+  @@unique([userId, presentationId])
+  @@index([userId])
+}
+
+// ============================================
+// CRUD UIUX Extension - Collaboration
+// ============================================
+
+model Comment {
+  id             String       @id @default(cuid())
+  presentation   Presentation @relation(fields: [presentationId], references: [id], onDelete: Cascade)
+  presentationId String
+  slide          Slide?       @relation("SlideComments", fields: [slideId], references: [id])
+  slideId        String?
+  user           User         @relation(fields: [userId], references: [id])
+  userId         String
+  content        String       @db.Text
+  parentId       String?      // 대댓글
+  isResolved     Boolean      @default(false)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  @@index([presentationId])
+  @@index([slideId])
+}
+
+model Collaborator {
+  id             String           @id @default(cuid())
+  presentation   Presentation     @relation(fields: [presentationId], references: [id], onDelete: Cascade)
+  presentationId String
+  user           User             @relation(fields: [userId], references: [id])
+  userId         String
+  role           CollaboratorRole @default(VIEWER)
+  invitedBy      String
+  joinedAt       DateTime         @default(now())
+
+  @@unique([presentationId, userId])
+  @@index([presentationId])
+}
+
+enum CollaboratorRole {
+  OWNER
+  EDITOR
+  COMMENTER
+  VIEWER
+}
+
+// ============================================
+// CRUD UIUX Extension - Export & Publishing
+// ============================================
+
+model ExportPreset {
+  id        String   @id @default(cuid())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String
+  name      String
+  format    String   // 'pptx', 'pdf', 'images'
+  config    Json     // 포맷별 옵션
+  isDefault Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+}
+
+model ShareLog {
+  id             String       @id @default(cuid())
+  presentation   Presentation @relation(fields: [presentationId], references: [id], onDelete: Cascade)
+  presentationId String
+  sharedBy       String
+  sharedTo       String?      // email or null for public
+  method         String       // 'link', 'email', 'embed'
+  note           String?
+  createdAt      DateTime     @default(now())
+
+  @@index([presentationId])
+}
+
+// ============================================
+// CRUD UIUX Extension - Design & Typography
+// ============================================
+
+model FontSet {
+  id             String        @id @default(cuid())
+  name           String
+  titleFont      String
+  bodyFont       String
+  headingFont    String?
+  isPublic       Boolean       @default(false)
+  organization   Organization? @relation(fields: [organizationId], references: [id])
+  organizationId String?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  @@index([isPublic])
+  @@index([organizationId])
+}
+
+// ============================================
+// UX Enhancement - User Preferences & State
+// ============================================
+
+model UserPreference {
+  id          String   @id @default(cuid())
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId      String   @unique
+  theme       String   @default("light")
+  font        String   @default("default")
+  exportType  String   @default("pptx")
+  customData  Json     @default("{}")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model UXState {
+  id          String   @id @default(cuid())
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId      String   @unique
+  lastStep    String?
+  focusMode   Boolean  @default(false)
+  sessionData Json     @default("{}")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model AutoRule {
+  id         String   @id @default(cuid())
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId     String
+  name       String
+  trigger    String
+  action     String
+  config     Json     @default("{}")
+  isActive   Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([userId])
+  @@index([isActive])
+}
+
+model QualityScore {
+  id             String   @id @default(cuid())
+  presentationId String
+  slideId        String?
+  readability    Float
+  clarity        Float
+  overall        Float
+  metadata       Json?
+  createdAt      DateTime @default(now())
+
+  @@index([presentationId])
+  @@index([slideId])
+}
+
+model RecoveryLog {
+  id         String   @id @default(cuid())
+  userId     String
+  sessionId  String?
+  errorType  String
+  errorData  Json?
+  retryCount Int      @default(0)
+  resolved   Boolean  @default(false)
+  recoveryAction String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([userId])
+  @@index([errorType])
+  @@index([resolved])
 }
 

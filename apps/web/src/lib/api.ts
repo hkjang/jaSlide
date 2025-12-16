@@ -128,4 +128,74 @@ export const assetsApi = {
         api.get('/assets/icons', { params: { q: query } }),
 };
 
+// Blocks
+export const blocksApi = {
+    list: (slideId: string) => api.get(`/slides/${slideId}/blocks`),
+    get: (blockId: string) => api.get(`/blocks/${blockId}`),
+    create: (slideId: string, data: any) => api.post(`/slides/${slideId}/blocks`, data),
+    update: (blockId: string, data: any) => api.patch(`/blocks/${blockId}`, data),
+    delete: (blockId: string) => api.delete(`/blocks/${blockId}`),
+    reorder: (slideId: string, blockOrders: { blockId: string; order: number }[]) =>
+        api.post(`/slides/${slideId}/blocks/reorder`, { blockOrders }),
+    duplicate: (blockId: string) => api.post(`/blocks/${blockId}/duplicate`),
+};
+
+// Versions
+export const versionsApi = {
+    list: (presentationId: string) => api.get(`/presentations/${presentationId}/versions`),
+    get: (versionId: string) => api.get(`/versions/${versionId}`),
+    create: (presentationId: string, name?: string) =>
+        api.post(`/presentations/${presentationId}/versions`, { name }),
+    restore: (versionId: string) => api.post(`/versions/${versionId}/restore`),
+    delete: (versionId: string) => api.delete(`/versions/${versionId}`),
+    compare: (version1Id: string, version2Id: string) =>
+        api.get(`/versions/${version1Id}/compare/${version2Id}`),
+};
+
+// Comments
+export const commentsApi = {
+    listByPresentation: (presentationId: string) =>
+        api.get(`/presentations/${presentationId}/comments`),
+    listBySlide: (slideId: string) => api.get(`/slides/${slideId}/comments`),
+    create: (presentationId: string, data: { content: string; slideId?: string; parentId?: string }) =>
+        api.post(`/presentations/${presentationId}/comments`, data),
+    update: (commentId: string, data: { content?: string; isResolved?: boolean }) =>
+        api.patch(`/comments/${commentId}`, data),
+    delete: (commentId: string) => api.delete(`/comments/${commentId}`),
+    resolve: (commentId: string) => api.post(`/comments/${commentId}/resolve`),
+    unresolve: (commentId: string) => api.post(`/comments/${commentId}/unresolve`),
+};
+
+// Collaborators
+export const collaboratorsApi = {
+    list: (presentationId: string) =>
+        api.get(`/presentations/${presentationId}/collaborators`),
+    invite: (presentationId: string, data: { email: string; role?: string }) =>
+        api.post(`/presentations/${presentationId}/collaborators`, data),
+    update: (collaboratorId: string, data: { role: string }) =>
+        api.patch(`/collaborators/${collaboratorId}`, data),
+    remove: (collaboratorId: string) => api.delete(`/collaborators/${collaboratorId}`),
+};
+
+// Favorites
+export const favoritesApi = {
+    list: (type?: string) => api.get('/favorites', { params: { type } }),
+    add: (resourceType: string, resourceId: string) =>
+        api.post('/favorites', { resourceType, resourceId }),
+    remove: (favoriteId: string) => api.delete(`/favorites/${favoriteId}`),
+    reorder: (resourceType: string, orderedIds: string[]) =>
+        api.post('/favorites/reorder', { resourceType, orderedIds }),
+};
+
+// Export Presets
+export const exportPresetsApi = {
+    list: () => api.get('/export-presets'),
+    getDefault: (format: string) => api.get('/export-presets/default', { params: { format } }),
+    get: (presetId: string) => api.get(`/export-presets/${presetId}`),
+    create: (data: { name: string; format: string; config?: any; isDefault?: boolean }) =>
+        api.post('/export-presets', data),
+    update: (presetId: string, data: any) => api.patch(`/export-presets/${presetId}`, data),
+    delete: (presetId: string) => api.delete(`/export-presets/${presetId}`),
+};
+
 export default api;

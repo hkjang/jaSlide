@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { DndProvider, useDrag, useDrop } from 'react-dnd';
@@ -10,6 +10,9 @@ import { useEditorStore } from '@/stores/editor-store';
 import { useAuthStore } from '@/stores/auth-store';
 import { presentationsApi, slidesApi } from '@/lib/api';
 import { toast } from '@/hooks/use-toast';
+import { UndoRedoButtons } from '@/components/editor/undo-redo-buttons';
+import { VersionHistory } from '@/components/editor/version-history';
+import { CommentsPanel } from '@/components/editor/comments-panel';
 import {
     ArrowLeft,
     Save,
@@ -26,6 +29,8 @@ import {
     Image as ImageIcon,
     BarChart2,
     Quote,
+    History,
+    MessageSquare,
 } from 'lucide-react';
 
 // Slide type icons mapping
@@ -102,19 +107,44 @@ export default function EditorPage() {
         presentation,
         selectedSlideId,
         isDirty,
+        canUndo,
+        canRedo,
         setPresentation,
         setSelectedSlide,
         updateSlide,
         reorderSlides,
         removeSlide,
         setDirty,
+        undo,
+        redo,
     } = useEditorStore();
 
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [showSlideTypes, setShowSlideTypes] = useState(false);
+    const [showVersionHistory, setShowVersionHistory] = useState(false);
+    const [showCommentsPanel, setShowCommentsPanel] = useState(false);
 
     const selectedSlide = presentation?.slides.find((s) => s.id === selectedSlideId);
+
+    // Keyboard shortcuts
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
+                e.preventDefault();
+                if (canUndo) undo();
+            } else if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || (e.key === 'z' && e.shiftKey))) {
+                e.preventDefault();
+                if (canRedo) redo();
+            } else if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+                e.preventDefault();
+                handleSave();
+            }
+        };
+
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [canUndo, canRedo, undo, redo]);
 
     useEffect(() => {
         if (!isAuthenticated) {
@@ -224,6 +254,31 @@ export default function EditorPage() {
                     </div>
 
                     <div className="flex items-center gap-2">
+                        <UndoRedoButtons />
+                        <div className="w-px h-6 bg-gray-200" />
+                        <Button
+                            variant={showVersionHistory ? 'secondary' : 'outline'}
+                            size="sm"
+                            onClick={() => {
+                                setShowVersionHistory(!showVersionHistory);
+                                setShowCommentsPanel(false);
+                            }}
+                        >
+                            <History className="h-4 w-4 mr-1" />
+                            버전
+                        </Button>
+                        <Button
+                            variant={showCommentsPanel ? 'secondary' : 'outline'}
+                            size="sm"
+                            onClick={() => {
+                                setShowCommentsPanel(!showCommentsPanel);
+                                setShowVersionHistory(false);
+                            }}
+                        >
+                            <MessageSquare className="h-4 w-4 mr-1" />
+                            댓글
+                        </Button>
+                        <div className="w-px h-6 bg-gray-200" />
                         <Button variant="outline" size="sm" onClick={handleSave} disabled={!isDirty || saving}>
                             <Save className="h-4 w-4 mr-1" />
                             {saving ? '저장 중...' : '저장'}
@@ -372,6 +427,23 @@ export default function EditorPage() {
                             <p className="text-sm text-gray-500">슬라이드를 선택하면 속성을 편집할 수 있습니다.</p>
                         )}
                     </aside>
+
+                    {/* Version History Panel */}
+                    {showVersionHistory && (
+                        <VersionHistory
+                            presentationId={presentationId}
+                            onClose={() => setShowVersionHistory(false)}
+                        />
+                    )}
+
+                    {/* Comments Panel */}
+                    {showCommentsPanel && (
+                        <CommentsPanel
+                            presentationId={presentationId}
+                            slideId={selectedSlideId || undefined}
+                            onClose={() => setShowCommentsPanel(false)}
+                        />
+                    )}
                 </div>
             </div>
         </DndProvider>

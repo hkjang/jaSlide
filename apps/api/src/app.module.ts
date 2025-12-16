@@ -16,6 +16,17 @@ import { QueueModule } from './modules/queue/queue.module';
 import { HealthModule } from './modules/health/health.module';
 import { MonitoringModule } from './modules/monitoring/monitoring.module';
 import { AdminModule } from './modules/admin/admin.module';
+// CRUD UIUX Extension modules
+import { BlocksModule } from './modules/blocks/blocks.module';
+import { VersionsModule } from './modules/versions/versions.module';
+import { CommentsModule } from './modules/comments/comments.module';
+import { CollaboratorsModule } from './modules/collaborators/collaborators.module';
+import { FavoritesModule } from './modules/favorites/favorites.module';
+import { ExportPresetsModule } from './modules/export-presets/export-presets.module';
+import { RecentWorksModule } from './modules/recent-works/recent-works.module';
+import { ColorPalettesModule } from './modules/color-palettes/color-palettes.module';
+import { FontSetsModule } from './modules/font-sets/font-sets.module';
+import { InputPromptsModule } from './modules/input-prompts/input-prompts.module';
 
 @Module({
     imports: [
@@ -50,6 +61,18 @@ import { AdminModule } from './modules/admin/admin.module';
         QueueModule,
         HealthModule,
         MonitoringModule,
+
+        // CRUD UIUX Extension modules
+        BlocksModule,
+        VersionsModule,
+        CommentsModule,
+        CollaboratorsModule,
+        FavoritesModule,
+        ExportPresetsModule,
+        RecentWorksModule,
+        ColorPalettesModule,
+        FontSetsModule,
+        InputPromptsModule,
 
         // Admin module
         AdminModule,
