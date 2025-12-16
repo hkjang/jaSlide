@@ -31,7 +31,7 @@ export default function AdminAlertsPage() {
     const fetchAlerts = async () => {
         setLoading(true);
         try {
-            const token = localStorage.getItem('auth_token');
+            const token = localStorage.getItem('accessToken');
             const res = await fetch(`${API_URL}/admin/alerts`, { headers: { Authorization: `Bearer ${token}` } });
             if (res.ok) setAlerts((await res.json()).data);
         } finally {
@@ -40,7 +40,7 @@ export default function AdminAlertsPage() {
     };
 
     const toggleAlert = async (id: string, isActive: boolean) => {
-        const token = localStorage.getItem('auth_token');
+        const token = localStorage.getItem('accessToken');
         await fetch(`${API_URL}/admin/alerts/${id}`, {
             method: 'PATCH',
             headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
@@ -51,14 +51,14 @@ export default function AdminAlertsPage() {
 
     const deleteAlert = async (id: string) => {
         if (!confirm('이 알림을 삭제하시겠습니까?')) return;
-        const token = localStorage.getItem('auth_token');
+        const token = localStorage.getItem('accessToken');
         await fetch(`${API_URL}/admin/alerts/${id}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } });
         fetchAlerts();
     };
 
     const createAlert = async (e: React.FormEvent) => {
         e.preventDefault();
-        const token = localStorage.getItem('auth_token');
+        const token = localStorage.getItem('accessToken');
         let config = {};
         try { config = JSON.parse(formData.config); } catch { }
 

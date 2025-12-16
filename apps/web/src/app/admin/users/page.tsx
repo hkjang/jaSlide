@@ -35,7 +35,7 @@ export default function AdminUsersPage() {
     const fetchUsers = async () => {
         setLoading(true);
         try {
-            const token = localStorage.getItem('auth_token');
+            const token = localStorage.getItem('accessToken');
             const params = new URLSearchParams({
                 page: String(page),
                 limit: String(limit),

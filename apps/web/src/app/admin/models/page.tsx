@@ -38,7 +38,7 @@ export default function AdminModelsPage() {
     const fetchModels = async () => {
         setLoading(true);
         try {
-            const token = localStorage.getItem('auth_token');
+            const token = localStorage.getItem('accessToken');
             const res = await fetch(`${API_URL}/admin/models`, { headers: { Authorization: `Bearer ${token}` } });
             if (res.ok) setModels((await res.json()).data);
         } finally {
@@ -47,7 +47,7 @@ export default function AdminModelsPage() {
     };
 
     const setDefault = async (id: string) => {
-        const token = localStorage.getItem('auth_token');
+        const token = localStorage.getItem('accessToken');
         await fetch(`${API_URL}/admin/models/${id}/set-default`, {
             method: 'POST',
             headers: { Authorization: `Bearer ${token}` },
@@ -56,7 +56,7 @@ export default function AdminModelsPage() {
     };
 
     const toggleActive = async (id: string, isActive: boolean) => {
-        const token = localStorage.getItem('auth_token');
+        const token = localStorage.getItem('accessToken');
         await fetch(`${API_URL}/admin/models/${id}`, {
             method: 'PATCH',
             headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
@@ -67,7 +67,7 @@ export default function AdminModelsPage() {
 
     const deleteModel = async (id: string) => {
         if (!confirm('이 모델을 삭제하시겠습니까?')) return;
-        const token = localStorage.getItem('auth_token');
+        const token = localStorage.getItem('accessToken');
         await fetch(`${API_URL}/admin/models/${id}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } });
         fetchModels();
     };

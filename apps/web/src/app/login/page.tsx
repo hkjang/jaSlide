@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { authApi } from '@/lib/api';
-import { useAuthStore } from '@/stores/auth-store';
+import { useAuthStore, isAdminRole } from '@/stores/auth-store';
 import { Sparkles, ArrowLeft } from 'lucide-react';
 
 export default function LoginPage() {
@@ -25,7 +25,12 @@ export default function LoginPage() {
             const response = await authApi.login({ email, password });
             const { user, accessToken } = response.data;
             setAuth(user, accessToken);
-            router.push('/dashboard');
+            // Role-based routing: admins go to /admin, users go to /dashboard
+            if (isAdminRole(user.role)) {
+                router.push('/admin');
+            } else {
+                router.push('/dashboard');
+            }
         } catch (err: any) {
             setError(err.response?.data?.message || '로그인에 실패했습니다.');
         } finally {

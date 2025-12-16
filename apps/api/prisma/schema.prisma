@@ -23,6 +23,11 @@ model User {
   role               UserRole             @default(USER)
   status             UserStatus           @default(ACTIVE)
   preferences        Json                 @default("{}")
+  // MFA & Security fields
+  mfaEnabled         Boolean              @default(false)
+  mfaSecret          String?
+  failedLoginAttempts Int                 @default(0)
+  lockedUntil        DateTime?
   organization       Organization?        @relation(fields: [organizationId], references: [id])
   organizationId     String?
   presentations      Presentation[]
@@ -33,6 +38,7 @@ model User {
   accounts           Account[]
   sessions           Session[]
   userRoles          UserRoleAssignment[]
+  loginLogs          LoginLog[]
   // CRUD UIUX Extension
   inputPrompts       InputPrompt[]
   inputCombinations  InputCombination[]
@@ -102,6 +108,9 @@ enum UserRole {
   USER
   ADMIN
   ORG_ADMIN
+  SYSTEM_ADMIN
+  OPERATOR
+  AUDITOR
 }
 
 model Organization {
@@ -567,6 +576,28 @@ model ApiLog {
   @@index([userId])
   @@index([path])
   @@index([statusCode])
+  @@index([createdAt])
+}
+
+// ============================================
+// Login Audit Log
+// ============================================
+
+model LoginLog {
+  id        String    @id @default(cuid())
+  user      User?     @relation(fields: [userId], references: [id])
+  userId    String?
+  email     String
+  success   Boolean
+  ipAddress String?
+  userAgent String?
+  device    String?
+  errorMsg  String?
+  createdAt DateTime  @default(now())
+
+  @@index([userId])
+  @@index([email])
+  @@index([success])
   @@index([createdAt])
 }
 

@@ -32,7 +32,7 @@ export default function AdminAssetsPage() {
     const fetchAssets = async () => {
         setLoading(true);
         try {
-            const token = localStorage.getItem('auth_token');
+            const token = localStorage.getItem('accessToken');
             const params = new URLSearchParams({
                 page: String(page), limit: String(limit),
                 ...(search && { search }), ...(typeFilter && { type: typeFilter }),
@@ -52,7 +52,7 @@ export default function AdminAssetsPage() {
 
     const deleteAsset = async (id: string) => {
         if (!confirm('이 에셋을 삭제하시겠습니까?')) return;
-        const token = localStorage.getItem('auth_token');
+        const token = localStorage.getItem('accessToken');
         await fetch(`${API_URL}/admin/assets/${id}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } });
         fetchAssets();
     };

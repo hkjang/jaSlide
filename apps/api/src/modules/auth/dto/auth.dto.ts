@@ -33,6 +33,7 @@ export class AuthResponse {
         email: string;
         name: string | null;
         creditsRemaining: number;
+        role: string;
     };
     accessToken: string;
 }

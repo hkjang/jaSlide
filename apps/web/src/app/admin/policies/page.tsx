@@ -30,7 +30,7 @@ export default function AdminPoliciesPage() {
     const fetchPolicies = async () => {
         setLoading(true);
         try {
-            const token = localStorage.getItem('auth_token');
+            const token = localStorage.getItem('accessToken');
             const params = new URLSearchParams({ ...(categoryFilter && { category: categoryFilter }) });
             const res = await fetch(`${API_URL}/admin/policies?${params}`, {
                 headers: { Authorization: `Bearer ${token}` },
@@ -47,7 +47,7 @@ export default function AdminPoliciesPage() {
     };
 
     const saveEdit = async (id: string) => {
-        const token = localStorage.getItem('auth_token');
+        const token = localStorage.getItem('accessToken');
         let value: any = editValue;
         try { value = JSON.parse(editValue); } catch { }
 
@@ -62,7 +62,7 @@ export default function AdminPoliciesPage() {
 
     const deletePolicy = async (id: string) => {
         if (!confirm('이 정책을 삭제하시겠습니까?')) return;
-        const token = localStorage.getItem('auth_token');
+        const token = localStorage.getItem('accessToken');
         await fetch(`${API_URL}/admin/policies/${id}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } });
         fetchPolicies();
     };

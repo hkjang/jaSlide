@@ -1,12 +1,19 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
+export type UserRole = 'USER' | 'ADMIN' | 'ORG_ADMIN' | 'SYSTEM_ADMIN' | 'OPERATOR' | 'AUDITOR';
+
 interface User {
     id: string;
     email: string;
     name: string | null;
     creditsRemaining: number;
+    role: UserRole;
 }
+
+// Helper to determine if user has admin-level access
+export const isAdminRole = (role?: UserRole | string): boolean =>
+    ['ADMIN', 'SYSTEM_ADMIN', 'ORG_ADMIN', 'OPERATOR'].includes(role || '');
 
 interface AuthState {
     user: User | null;

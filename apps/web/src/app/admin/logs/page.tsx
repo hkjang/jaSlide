@@ -44,7 +44,7 @@ export default function AdminLogsPage() {
     const fetchLogs = async () => {
         setLoading(true);
         try {
-            const token = localStorage.getItem('auth_token');
+            const token = localStorage.getItem('accessToken');
             const params = new URLSearchParams({ page: String(page), limit: String(limit) });
             const endpoint = tab === 'audit' ? 'audit' : 'api';
 
@@ -67,7 +67,7 @@ export default function AdminLogsPage() {
     };
 
     const exportLogs = async (format: 'json' | 'csv') => {
-        const token = localStorage.getItem('auth_token');
+        const token = localStorage.getItem('accessToken');
         const endpoint = tab === 'audit' ? 'audit' : 'api';
 
         const res = await fetch(`${API_URL}/admin/logs/export/${endpoint}?format=${format}`, {

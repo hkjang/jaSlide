@@ -47,7 +47,7 @@ export default function AdminDashboard() {
 
     const fetchDashboardData = async () => {
         try {
-            const token = localStorage.getItem('auth_token');
+            const token = localStorage.getItem('accessToken');
             const headers = { Authorization: `Bearer ${token}` };
 
             const [statsRes, activityRes, healthRes] = await Promise.all([

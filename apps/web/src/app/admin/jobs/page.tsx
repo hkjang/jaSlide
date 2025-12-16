@@ -38,7 +38,7 @@ export default function AdminJobsPage() {
     const fetchData = async () => {
         setLoading(true);
         try {
-            const token = localStorage.getItem('auth_token');
+            const token = localStorage.getItem('accessToken');
             const headers = { Authorization: `Bearer ${token}` };
             const params = new URLSearchParams({
                 page: String(page),
@@ -66,7 +66,7 @@ export default function AdminJobsPage() {
     };
 
     const retryJob = async (id: string) => {
-        const token = localStorage.getItem('auth_token');
+        const token = localStorage.getItem('accessToken');
         await fetch(`${API_URL}/admin/jobs/${id}/retry`, {
             method: 'POST',
             headers: { Authorization: `Bearer ${token}` },
@@ -75,7 +75,7 @@ export default function AdminJobsPage() {
     };
 
     const cancelJob = async (id: string) => {
-        const token = localStorage.getItem('auth_token');
+        const token = localStorage.getItem('accessToken');
         await fetch(`${API_URL}/admin/jobs/${id}/cancel`, {
             method: 'POST',
             headers: { Authorization: `Bearer ${token}` },

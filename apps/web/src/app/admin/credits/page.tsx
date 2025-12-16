@@ -47,7 +47,7 @@ export default function AdminCreditsPage() {
     const fetchData = async () => {
         setLoading(true);
         try {
-            const token = localStorage.getItem('auth_token');
+            const token = localStorage.getItem('accessToken');
             const headers = { Authorization: `Bearer ${token}` };
 
             if (tab === 'policies') {
@@ -66,7 +66,7 @@ export default function AdminCreditsPage() {
     };
 
     const togglePolicy = async (id: string, isActive: boolean) => {
-        const token = localStorage.getItem('auth_token');
+        const token = localStorage.getItem('accessToken');
         await fetch(`${API_URL}/admin/credits/policies/${id}`, {
             method: 'PATCH',
             headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
@@ -76,7 +76,7 @@ export default function AdminCreditsPage() {
     };
 
     const togglePlan = async (id: string, isActive: boolean) => {
-        const token = localStorage.getItem('auth_token');
+        const token = localStorage.getItem('accessToken');
         await fetch(`${API_URL}/admin/credits/plans/${id}`, {
             method: 'PATCH',
             headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },

@@ -32,7 +32,7 @@ export default function AdminOperationsPage() {
 
     const fetchData = async () => {
         try {
-            const token = localStorage.getItem('auth_token');
+            const token = localStorage.getItem('accessToken');
             const headers = { Authorization: `Bearer ${token}` };
 
             const [healthRes, queueRes] = await Promise.all([
@@ -48,7 +48,7 @@ export default function AdminOperationsPage() {
     };
 
     const clearCache = async (type: string) => {
-        const token = localStorage.getItem('auth_token');
+        const token = localStorage.getItem('accessToken');
         await fetch(`${API_URL}/admin/operations/cache/clear`, {
             method: 'POST',
             headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
@@ -59,7 +59,7 @@ export default function AdminOperationsPage() {
 
     const forceStopJobs = async () => {
         if (!confirm('처리 중인 모든 작업을 중지하시겠습니까?')) return;
-        const token = localStorage.getItem('auth_token');
+        const token = localStorage.getItem('accessToken');
         const res = await fetch(`${API_URL}/admin/operations/jobs/force-stop`, {
             method: 'POST',
             headers: { Authorization: `Bearer ${token}` },
@@ -73,7 +73,7 @@ export default function AdminOperationsPage() {
 
     const testModel = async () => {
         if (!testModelId) return;
-        const token = localStorage.getItem('auth_token');
+        const token = localStorage.getItem('accessToken');
         const res = await fetch(`${API_URL}/admin/operations/model-test`, {
             method: 'POST',
             headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },

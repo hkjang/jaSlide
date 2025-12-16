@@ -29,7 +29,7 @@ export default function AdminPromptsPage() {
     const fetchPrompts = async () => {
         setLoading(true);
         try {
-            const token = localStorage.getItem('auth_token');
+            const token = localStorage.getItem('accessToken');
             const res = await fetch(`${API_URL}/admin/prompts`, { headers: { Authorization: `Bearer ${token}` } });
             if (res.ok) setPrompts((await res.json()).data);
         } finally {
@@ -38,14 +38,14 @@ export default function AdminPromptsPage() {
     };
 
     const selectPrompt = async (id: string) => {
-        const token = localStorage.getItem('auth_token');
+        const token = localStorage.getItem('accessToken');
         const res = await fetch(`${API_URL}/admin/prompts/${id}`, { headers: { Authorization: `Bearer ${token}` } });
         if (res.ok) setSelectedPrompt(await res.json());
     };
 
     const testPrompt = async () => {
         if (!selectedPrompt) return;
-        const token = localStorage.getItem('auth_token');
+        const token = localStorage.getItem('accessToken');
         const res = await fetch(`${API_URL}/admin/prompts/${selectedPrompt.id}/test`, {
             method: 'POST',
             headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
@@ -59,7 +59,7 @@ export default function AdminPromptsPage() {
 
     const rollbackVersion = async (version: number) => {
         if (!selectedPrompt) return;
-        const token = localStorage.getItem('auth_token');
+        const token = localStorage.getItem('accessToken');
         await fetch(`${API_URL}/admin/prompts/${selectedPrompt.id}/rollback/${version}`, {
             method: 'POST',
             headers: { Authorization: `Bearer ${token}` },

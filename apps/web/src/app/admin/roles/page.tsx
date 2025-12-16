@@ -39,7 +39,7 @@ export default function AdminRolesPage() {
     const fetchRoles = async () => {
         setLoading(true);
         try {
-            const token = localStorage.getItem('auth_token');
+            const token = localStorage.getItem('accessToken');
             const res = await fetch(`${API_URL}/admin/roles`, {
                 headers: { Authorization: `Bearer ${token}` },
             });
@@ -66,7 +66,7 @@ export default function AdminRolesPage() {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        const token = localStorage.getItem('auth_token');
+        const token = localStorage.getItem('accessToken');
         const method = editingRole ? 'PATCH' : 'POST';
         const url = editingRole ? `${API_URL}/admin/roles/${editingRole.id}` : `${API_URL}/admin/roles`;
 
@@ -82,7 +82,7 @@ export default function AdminRolesPage() {
 
     const deleteRole = async (id: string) => {
         if (!confirm('이 역할을 삭제하시겠습니까?')) return;
-        const token = localStorage.getItem('auth_token');
+        const token = localStorage.getItem('accessToken');
         await fetch(`${API_URL}/admin/roles/${id}`, {
             method: 'DELETE',
             headers: { Authorization: `Bearer ${token}` },

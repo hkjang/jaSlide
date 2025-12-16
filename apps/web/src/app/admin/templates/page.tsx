@@ -47,7 +47,7 @@ export default function AdminTemplatesPage() {
     const fetchData = async () => {
         setLoading(true);
         try {
-            const token = localStorage.getItem('auth_token');
+            const token = localStorage.getItem('accessToken');
             const headers = { Authorization: `Bearer ${token}` };
 
             if (tab === 'templates') {
