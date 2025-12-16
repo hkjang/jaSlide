@@ -123,7 +123,7 @@ export default function LoginPage() {
 
                     <Button
                         variant="outline"
-                        className="w-full mt-4 border-white/20 text-white hover:bg-white/10"
+                        className="w-full mt-4 border-purple-400/50 bg-purple-600/20 text-white hover:bg-purple-600/40"
                         onClick={() => window.location.href = '/api/auth/google'}
                     >
                         <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24">

@@ -94,7 +94,7 @@ export default function HomePage() {
                             </Button>
                         </Link>
                         <Link href="/demo">
-                            <Button size="lg" variant="outline" className="text-white border-white/20 hover:bg-white/10 text-lg px-8 py-6">
+                            <Button size="lg" variant="outline" className="text-white border-purple-400/50 bg-purple-600/20 hover:bg-purple-600/40 text-lg px-8 py-6">
                                 데모 보기
                             </Button>
                         </Link>
