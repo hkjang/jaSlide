@@ -7,7 +7,9 @@ export class AdminAssetsService {
     constructor(private prisma: PrismaService) { }
 
     async findAll(filter: PaginationDto & { type?: string; search?: string; organizationId?: string }) {
-        const { page = 1, limit = 20, type, search, organizationId } = filter;
+        const { page: rawPage = 1, limit: rawLimit = 20, type, search, organizationId } = filter;
+        const page = Number(rawPage);
+        const limit = Number(rawLimit);
         const skip = (page - 1) * limit;
 
         const where: any = {};
