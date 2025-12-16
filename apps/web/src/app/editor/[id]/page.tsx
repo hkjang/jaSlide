@@ -249,9 +249,14 @@ export default function EditorPage() {
             const slide = presentation?.slides.find((s) => s.id === slideId);
             if (slide) {
                 try {
+                    // Only send allowed fields to the API
                     await slidesApi.update(presentationId, slideId, {
-                        ...slide,
-                        ...updates,
+                        type: updates.type ?? slide.type,
+                        title: updates.title ?? slide.title,
+                        content: updates.content ?? slide.content,
+                        layout: updates.layout ?? slide.layout,
+                        notes: updates.notes ?? slide.notes,
+                        order: updates.order ?? slide.order,
                     });
                     setDirty(false);
                 } catch (error) {
