@@ -2,6 +2,16 @@ import { Injectable, CanActivate, ExecutionContext, ForbiddenException } from '@
 import { Reflector } from '@nestjs/core';
 import { ROLES_KEY } from '../decorators/roles.decorator';
 
+// Role hierarchy: SYSTEM_ADMIN > ORG_ADMIN > ADMIN > OPERATOR > AUDITOR > USER
+const ROLE_HIERARCHY: Record<string, string[]> = {
+    'SYSTEM_ADMIN': ['SYSTEM_ADMIN', 'ORG_ADMIN', 'ADMIN', 'OPERATOR', 'AUDITOR', 'USER'],
+    'ORG_ADMIN': ['ORG_ADMIN', 'ADMIN', 'OPERATOR', 'AUDITOR', 'USER'],
+    'ADMIN': ['ADMIN', 'OPERATOR', 'AUDITOR', 'USER'],
+    'OPERATOR': ['OPERATOR', 'AUDITOR', 'USER'],
+    'AUDITOR': ['AUDITOR', 'USER'],
+    'USER': ['USER'],
+};
+
 @Injectable()
 export class RolesGuard implements CanActivate {
     constructor(private reflector: Reflector) { }
@@ -23,8 +33,11 @@ export class RolesGuard implements CanActivate {
             throw new ForbiddenException('Authentication required');
         }
 
-        // Check if user's role matches any required role
-        const hasRole = requiredRoles.some(role => user.role === role);
+        // Get all roles the user's role grants access to
+        const userGrantedRoles = ROLE_HIERARCHY[user.role] || [user.role];
+
+        // Check if any of the user's granted roles match any required role
+        const hasRole = requiredRoles.some(role => userGrantedRoles.includes(role));
 
         if (!hasRole) {
             throw new ForbiddenException('Insufficient permissions - Admin access required');
