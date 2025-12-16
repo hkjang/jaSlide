@@ -13,6 +13,10 @@ import { toast } from '@/hooks/use-toast';
 import { UndoRedoButtons } from '@/components/editor/undo-redo-buttons';
 import { VersionHistory } from '@/components/editor/version-history';
 import { CommentsPanel } from '@/components/editor/comments-panel';
+import { SaveStatusIndicator } from '@/components/editor/save-status-indicator';
+import { AiHintBar } from '@/components/editor/ai-hint-bar';
+import { SlideThumbnail } from '@/components/editor/slide-thumbnail';
+import { SlideTemplatesDialog } from '@/components/editor/slide-templates-dialog';
 import {
     ArrowLeft,
     Save,
@@ -137,6 +141,8 @@ export default function EditorPage() {
     const [isExporting, setIsExporting] = useState(false);
     const [isAiEditing, setIsAiEditing] = useState(false);
     const [isDuplicating, setIsDuplicating] = useState(false);
+    const [showTemplatesDialog, setShowTemplatesDialog] = useState(false);
+    const [multiSelectedSlides, setMultiSelectedSlides] = useState<string[]>([]);
 
     const selectedSlide = presentation?.slides.find((s) => s.id === selectedSlideId);
 
@@ -152,6 +158,9 @@ export default function EditorPage() {
             } else if ((e.ctrlKey || e.metaKey) && e.key === 's') {
                 e.preventDefault();
                 handleSave();
+            } else if ((e.ctrlKey || e.metaKey) && e.key === 'd') {
+                e.preventDefault();
+                if (selectedSlideId) handleDuplicateSlide();
             }
         };
 
@@ -406,10 +415,12 @@ export default function EditorPage() {
                         </Link>
                         <div>
                             <h1 className="font-medium">{presentation.title}</h1>
-                            <span className="text-xs text-gray-500">
-                                {presentation.slides.length} 슬라이드
-                                {isDirty && ' • 저장되지 않은 변경사항'}
-                            </span>
+                            <div className="flex items-center gap-2">
+                                <span className="text-xs text-gray-500">
+                                    {presentation.slides.length} 슬라이드
+                                </span>
+                                <SaveStatusIndicator presentationId={presentationId} isDirty={isDirty} />
+                            </div>
                         </div>
                     </div>
 
@@ -488,30 +499,15 @@ export default function EditorPage() {
                     <aside className="w-52 bg-white border-r p-3 overflow-y-auto">
                         <div className="flex items-center justify-between mb-3">
                             <span className="text-sm font-medium text-gray-700">슬라이드</span>
-                            <div className="relative">
-                                <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    className="h-7 w-7 p-0"
-                                    onClick={() => setShowSlideTypes(!showSlideTypes)}
-                                >
-                                    <Plus className="h-4 w-4" />
-                                </Button>
-                                {showSlideTypes && (
-                                    <div className="absolute right-0 top-8 w-48 bg-white rounded-lg shadow-lg border p-2 z-10">
-                                        {Object.entries(slideTypeIcons).map(([type, Icon]) => (
-                                            <button
-                                                key={type}
-                                                onClick={() => handleAddSlide(type)}
-                                                className="w-full flex items-center gap-2 px-3 py-2 hover:bg-gray-100 rounded text-sm"
-                                            >
-                                                <Icon className="h-4 w-4 text-gray-500" />
-                                                {type.replace('_', ' ')}
-                                            </button>
-                                        ))}
-                                    </div>
-                                )}
-                            </div>
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-7 w-7 p-0"
+                                onClick={() => setShowTemplatesDialog(true)}
+                                title="슬라이드 추가 (템플릿 선택)"
+                            >
+                                <Plus className="h-4 w-4" />
+                            </Button>
                         </div>
 
                         <div className="space-y-2">
@@ -664,6 +660,16 @@ export default function EditorPage() {
                     )}
                 </div>
 
+                {/* AI Hint Bar */}
+                <AiHintBar
+                    slideId={selectedSlideId || undefined}
+                    slideType={selectedSlide?.type}
+                    onApplyHint={(hint) => {
+                        setShowAiEditDialog(true);
+                        setAiEditInstruction(hint.action);
+                    }}
+                />
+
                 {/* Share Dialog */}
                 {showShareDialog && (
                     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
@@ -755,6 +761,13 @@ export default function EditorPage() {
                         </div>
                     </div>
                 )}
+
+                {/* Slide Templates Dialog */}
+                <SlideTemplatesDialog
+                    isOpen={showTemplatesDialog}
+                    onClose={() => setShowTemplatesDialog(false)}
+                    onSelectTemplate={handleAddSlide}
+                />
             </div>
         </DndProvider>
     );
