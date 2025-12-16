@@ -1,8 +1,20 @@
+'use client';
+
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-import { Sparkles, FileText, Palette, Download, ArrowRight } from 'lucide-react';
+import { Sparkles, FileText, Palette, Download, ArrowRight, User, LogOut, LayoutDashboard, Settings } from 'lucide-react';
+import { useAuthStore } from '@/stores/auth-store';
 
 export default function HomePage() {
+    const router = useRouter();
+    const { user, isAuthenticated, hasHydrated, clearAuth } = useAuthStore();
+
+    const handleLogout = () => {
+        clearAuth();
+        router.refresh();
+    };
+
     return (
         <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
             {/* Header */}
@@ -13,16 +25,51 @@ export default function HomePage() {
                         <span className="text-2xl font-bold text-white">JaSlide</span>
                     </div>
                     <div className="flex items-center gap-4">
-                        <Link href="/login">
-                            <Button variant="ghost" className="text-white hover:text-purple-300">
-                                로그인
-                            </Button>
-                        </Link>
-                        <Link href="/register">
-                            <Button className="bg-purple-600 hover:bg-purple-700">
-                                시작하기
-                            </Button>
-                        </Link>
+                        {!hasHydrated ? (
+                            // Loading state - show skeleton
+                            <div className="flex items-center gap-4">
+                                <div className="w-16 h-9 bg-white/10 rounded animate-pulse" />
+                                <div className="w-20 h-9 bg-white/10 rounded animate-pulse" />
+                            </div>
+                        ) : isAuthenticated && user ? (
+                            // Logged in state
+                            <>
+                                <Link href="/dashboard">
+                                    <Button variant="ghost" className="text-white hover:text-purple-300">
+                                        <LayoutDashboard className="h-4 w-4 mr-2" />
+                                        대시보드
+                                    </Button>
+                                </Link>
+                                <div className="flex items-center gap-2">
+                                    <div className="flex items-center gap-2 px-3 py-1.5 bg-white/10 rounded-full">
+                                        <User className="h-4 w-4 text-purple-400" />
+                                        <span className="text-sm text-white">{user.name || user.email}</span>
+                                    </div>
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        className="text-gray-400 hover:text-white"
+                                        onClick={handleLogout}
+                                    >
+                                        <LogOut className="h-4 w-4" />
+                                    </Button>
+                                </div>
+                            </>
+                        ) : (
+                            // Not logged in state
+                            <>
+                                <Link href="/login">
+                                    <Button variant="ghost" className="text-white hover:text-purple-300">
+                                        로그인
+                                    </Button>
+                                </Link>
+                                <Link href="/register">
+                                    <Button className="bg-purple-600 hover:bg-purple-700">
+                                        시작하기
+                                    </Button>
+                                </Link>
+                            </>
+                        )}
                     </div>
                 </nav>
             </header>
