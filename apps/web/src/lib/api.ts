@@ -203,4 +203,19 @@ export const exportPresetsApi = {
     delete: (presetId: string) => api.delete(`/export-presets/${presetId}`),
 };
 
+// Users
+export const usersApi = {
+    getProfile: () => api.get('/users/me'),
+    updateProfile: (data: { name?: string; image?: string; preferences?: any }) =>
+        api.put('/users/me', data),
+    uploadAvatar: (file: File) => {
+        const formData = new FormData();
+        formData.append('file', file);
+        return api.post('/assets/upload', formData, {
+            headers: { 'Content-Type': 'multipart/form-data' },
+            params: { type: 'IMAGE' },
+        });
+    },
+};
+
 export default api;
